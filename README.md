@@ -16,7 +16,7 @@ packages/core        domain rules and use cases; no Cloudflare APIs
   ports/             interfaces the use cases need: repositories, checker, notifier, clock
 apps/panel           private panel at /app: React 19, TanStack Router, Query and Form, built by Vite
 apps/worker          the Cloudflare side
-  adapters/          SQLite repositories, checks (HTTP, TCP, Minecraft), webhook, passkeys, HTTP routes
+  adapters/          SQLite repositories, checks (HTTP, sockets, DNS, RDAP, JSON-RPC), webhook, passkeys, HTTP routes
   runtime/           Worker entry and Durable Objects: wire adapters to use cases, nothing else
 ```
 
@@ -34,7 +34,7 @@ These are enforced by `pnpm budget` in CI:
 
 |                                          | Budget  | Now    |
 | ---------------------------------------- | ------- | ------ |
-| Worker bundle (gzip, minified)           | 100 KiB | 40 KiB |
+| Worker bundle (gzip, minified)           | 100 KiB | 48 KiB |
 | Startup CPU (local profile, median of 3) | 10 ms   | ~5 ms  |
 
 Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per status page, 2–4 ms per round of checks.
@@ -43,7 +43,13 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 
 - Workspaces, created by the instance operator, each with its own API keys.
 - REST API at `/api/v1` (`Authorization: Bearer tu_…` or `x-api-key`): monitors, hourly stats, incidents, alert channels and API keys.
-- Monitors: HTTP (method, headers, body, expected status codes, keyword present or absent), TCP, Minecraft server list ping, heartbeat with a grace period.
+- Monitors: HTTP (method, headers, body, expected status codes, keyword present or absent), TCP, Minecraft server list ping, heartbeat with a grace period, and the rest of OpenUptime's types:
+  - DNS: A, AAAA, CNAME, MX, TXT or NS records through Cloudflare's DNS over HTTPS, optionally matching an expected value exactly or as a substring.
+  - PostgreSQL, MySQL/MariaDB and Redis: a protocol handshake (SSLRequest, the server greeting, an inline PING) that proves the server answers, without credentials.
+  - WebSocket: the upgrade, and optionally a message that must get a reply.
+  - Domain registration expiry through RDAP, down within a number of days of expiring; checked daily by default.
+  - MCP servers over Streamable HTTP: initialize and list tools, with optional headers for auth.
+  - EVM nodes (`eth_syncing`, optionally `eth_chainId`) and Solana nodes (`getHealth`).
 - A monitor is reported down after two failures in a row; a failed check is retried after 20 seconds. Each monitor checks at a fixed offset inside its interval, so monitors spread out instead of firing together.
 - Incidents open and resolve with the monitor's status; alerts go to webhook channels in OpenUptime's webhook format, with retries.
 - Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
@@ -51,7 +57,7 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 
 - Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, webhook alerts with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
-Next: an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
+Next: an MCP server, more channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
 
 ## Run
 
