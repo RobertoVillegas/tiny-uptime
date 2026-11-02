@@ -5,6 +5,7 @@ export * from "./domain/auth/totp";
 export * from "./domain/auth/user";
 export * from "./domain/channel";
 export * from "./domain/incident";
+export * from "./domain/maintenance";
 export * from "./domain/monitor/health";
 export * from "./domain/monitor/monitor";
 export * from "./domain/monitor/schedule";

@@ -1,4 +1,4 @@
-import type { Monitor } from "../src/domain/monitor/monitor";
+import { DEFAULT_OPTIONS, type Monitor } from "../src/domain/monitor/monitor";
 
 export function httpMonitor(overrides: Partial<Monitor> = {}, state: Partial<Monitor["state"]> = {}): Monitor {
   return {
@@ -10,13 +10,17 @@ export function httpMonitor(overrides: Partial<Monitor> = {}, state: Partial<Mon
     public: false,
     config: { url: "https://site.test/", method: "GET", headers: {}, expectedStatus: [], timeoutMs: 10_000 },
     heartbeatToken: null,
+    options: DEFAULT_OPTIONS,
     createdAt: 0,
     updatedAt: 0,
     ...overrides,
     state: {
       status: "up",
       failures: 0,
+      successes: 0,
+      slowStreak: 0,
       openIncidentId: null,
+      openSlowIncidentId: null,
       nextCheckAt: 0,
       lastCheckedAt: null,
       lastLatencyMs: null,

@@ -1,19 +1,40 @@
 import type { Incident, IncidentListing, IncidentRepository } from "@tiny-uptime/core";
-import { first } from "../rows";
+import { bool, first } from "../rows";
 
-type Row = { id: string; monitor_id: string; started_at: number; resolved_at: number | null; cause: string };
+type Row = {
+  id: string;
+  monitor_id: string;
+  kind: Incident["kind"];
+  started_at: number;
+  resolved_at: number | null;
+  cause: string;
+  acknowledged_at: number | null;
+  acknowledged_by: string | null;
+  notified: number;
+  reminders: number;
+  last_reminder_at: number | null;
+  escalated_at: number | null;
+};
 
 export class SqliteIncidents implements IncidentRepository {
   constructor(private readonly sql: SqlStorage) {}
 
   insert(i: Incident): void {
     this.sql.exec(
-      "INSERT INTO incident (id, monitor_id, started_at, resolved_at, cause) VALUES (?, ?, ?, ?, ?)",
+      `INSERT INTO incident (id, monitor_id, kind, started_at, resolved_at, cause, acknowledged_at, acknowledged_by, notified, reminders, last_reminder_at, escalated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       i.id,
       i.monitorId,
+      i.kind,
       i.startedAt,
       i.resolvedAt,
       i.cause,
+      i.acknowledgedAt,
+      i.acknowledgedBy,
+      i.notified ? 1 : 0,
+      i.reminders,
+      i.lastReminderAt,
+      i.escalatedAt,
     );
   }
 
@@ -24,6 +45,22 @@ export class SqliteIncidents implements IncidentRepository {
 
   resolve(id: string, at: number): void {
     this.sql.exec("UPDATE incident SET resolved_at = ? WHERE id = ? AND resolved_at IS NULL", at, id);
+  }
+
+  open(): Incident[] {
+    return this.sql.exec<Row>("SELECT * FROM incident WHERE resolved_at IS NULL ORDER BY started_at").toArray().map(toIncident);
+  }
+
+  acknowledge(id: string, at: number, by: string): void {
+    this.sql.exec("UPDATE incident SET acknowledged_at = ?, acknowledged_by = ? WHERE id = ? AND acknowledged_at IS NULL", at, by, id);
+  }
+
+  recordReminder(id: string, at: number): void {
+    this.sql.exec("UPDATE incident SET reminders = reminders + 1, last_reminder_at = ? WHERE id = ?", at, id);
+  }
+
+  markEscalated(id: string, at: number): void {
+    this.sql.exec("UPDATE incident SET escalated_at = ? WHERE id = ?", at, id);
   }
 
   list(query: { limit: number; monitorId?: string }): IncidentListing[] {
@@ -48,5 +85,18 @@ export class SqliteIncidents implements IncidentRepository {
 }
 
 function toIncident(row: Row): Incident {
-  return { id: row.id, monitorId: row.monitor_id, startedAt: row.started_at, resolvedAt: row.resolved_at, cause: row.cause };
+  return {
+    id: row.id,
+    monitorId: row.monitor_id,
+    kind: row.kind,
+    startedAt: row.started_at,
+    resolvedAt: row.resolved_at,
+    cause: row.cause,
+    acknowledgedAt: row.acknowledged_at,
+    acknowledgedBy: row.acknowledged_by,
+    notified: bool(row.notified),
+    reminders: row.reminders,
+    lastReminderAt: row.last_reminder_at,
+    escalatedAt: row.escalated_at,
+  };
 }

@@ -1,8 +1,14 @@
-export type MonitorStatus = "up" | "down" | "pending" | "paused";
+export type MonitorStatus = "up" | "degraded" | "down" | "pending" | "paused";
 import { cn } from "cn";
 
-const COPY: Record<MonitorStatus, string> = { up: "Up", down: "Down", pending: "Pending", paused: "Paused" };
-const DOT: Record<MonitorStatus, string> = { up: "bg-up", down: "bg-down", pending: "bg-pending", paused: "bg-paused" };
+const COPY: Record<MonitorStatus, string> = { up: "Up", degraded: "Slow", down: "Down", pending: "Pending", paused: "Paused" };
+const DOT: Record<MonitorStatus, string> = {
+  up: "bg-up",
+  degraded: "bg-pending",
+  down: "bg-down",
+  pending: "bg-paused",
+  paused: "bg-paused",
+};
 
 /** Status as a dot plus a word, never color alone. A down monitor's dot pulses softly. */
 export function StatusBadge({ status, className }: { status: MonitorStatus; className?: string }) {

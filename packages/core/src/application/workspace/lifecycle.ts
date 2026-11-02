@@ -1,7 +1,7 @@
-import { retryDeliveries } from "./alerts";
+import { retryDeliveries, sendFollowUps } from "./alerts";
 import { runDueChecks } from "./checks";
 import type { WorkspaceDeps } from "./deps";
-import { cleanup } from "./maintenance";
+import { cleanup } from "./retention";
 
 /** A workspace's database is created by the operator; until then it answers nothing, so guessed ids cost no storage. */
 export function initWorkspace(d: WorkspaceDeps, id: string, name: string): void {
@@ -13,6 +13,7 @@ export async function onAlarm(d: WorkspaceDeps): Promise<void> {
   if (!d.info.get()) return;
   await runDueChecks(d);
   await retryDeliveries(d);
+  await sendFollowUps(d);
   cleanup(d);
   await d.scheduler.sync();
 }

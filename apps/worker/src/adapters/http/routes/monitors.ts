@@ -10,7 +10,7 @@ export function monitorRoutes(router: Router): void {
     .get(
       "/api/v1/monitors",
       workspaceRoute(async (c) =>
-        reply(await c.workspace.listMonitors(c.principal), (list) => list.map((m) => presentMonitor(m, c.url.origin))),
+        reply(await c.workspace.listMonitors(c.principal, tagFilter(c.url)), (list) => list.map((m) => presentMonitor(m, c.url.origin))),
       ),
     )
     .post(
@@ -43,4 +43,9 @@ export function monitorRoutes(router: Router): void {
         reply(await c.workspace.monitorStats(c.principal, c.params.id!, Number(c.url.searchParams.get("hours") ?? 24))),
       ),
     );
+}
+
+function tagFilter(url: URL): { tag?: string } {
+  const tag = url.searchParams.get("tag");
+  return tag ? { tag } : {};
 }

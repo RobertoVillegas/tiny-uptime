@@ -6,6 +6,7 @@ import type {
   DeliveryRepository,
   HistoryRepository,
   IncidentRepository,
+  MaintenanceRepository,
   MonitorRepository,
   Notifier,
   Scheduler,
@@ -19,6 +20,7 @@ export type WorkspaceDeps = {
   info: WorkspaceInfoRepository;
   monitors: MonitorRepository;
   incidents: IncidentRepository;
+  maintenance: MaintenanceRepository;
   history: HistoryRepository;
   channels: ChannelRepository;
   deliveries: DeliveryRepository;

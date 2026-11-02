@@ -1,7 +1,8 @@
 import type { Result } from "better-result";
 import type { ApiKey } from "../domain/api-key";
 import type { Channel, Delivery } from "../domain/channel";
-import type { AlertEvent, Incident } from "../domain/incident";
+import type { AlertEvent, AlertPolicy, Incident } from "../domain/incident";
+import type { MaintenanceWindow } from "../domain/maintenance";
 import type { CheckOutcome } from "../domain/monitor/health";
 import type { Monitor, MonitorSpec } from "../domain/monitor/monitor";
 import type { DeliveryFailed } from "../errors";
@@ -24,6 +25,11 @@ export interface IncidentRepository {
   insert(incident: Incident): void;
   get(id: string): Incident | null;
   resolve(id: string, at: number): void;
+  /** Unresolved incidents, oldest first. */
+  open(): Incident[];
+  acknowledge(id: string, at: number, by: string): void;
+  recordReminder(id: string, at: number): void;
+  markEscalated(id: string, at: number): void;
   list(query: { limit: number; monitorId?: string }): IncidentListing[];
   deleteForMonitor(monitorId: string): void;
   purgeResolvedBefore(cutoff: number): void;
@@ -73,10 +79,20 @@ export interface ApiKeyRepository {
   touch(id: string, at: number): void;
 }
 
+export interface MaintenanceRepository {
+  list(): MaintenanceWindow[];
+  get(id: string): MaintenanceWindow | null;
+  insert(window: MaintenanceWindow): void;
+  save(window: MaintenanceWindow): void;
+  delete(id: string): void;
+}
+
 export interface WorkspaceInfoRepository {
   /** Null until the workspace is initialized. */
   get(): { id: string; name: string } | null;
   init(id: string, name: string, now: number): void;
+  alertPolicy(): AlertPolicy;
+  setAlertPolicy(policy: AlertPolicy): void;
   lastCleanupAt(): number;
   setLastCleanupAt(at: number): void;
 }

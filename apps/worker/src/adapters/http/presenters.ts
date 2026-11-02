@@ -1,5 +1,20 @@
-import type { ApiKey as ApiKeyDto, Channel as ChannelDto, Incident as IncidentDto, Monitor as MonitorDto } from "@tiny-uptime/contracts";
-import { toInput, type ApiKey, type Channel, type IncidentListing, type Monitor } from "@tiny-uptime/core";
+import type {
+  ApiKey as ApiKeyDto,
+  Channel as ChannelDto,
+  Incident as IncidentDto,
+  Maintenance as MaintenanceDto,
+  Monitor as MonitorDto,
+} from "@tiny-uptime/contracts";
+import {
+  isActive,
+  isFinished,
+  toInput,
+  type ApiKey,
+  type Channel,
+  type IncidentListing,
+  type MaintenanceWindow,
+  type Monitor,
+} from "@tiny-uptime/core";
 
 /** Domain objects as the API shows them: ISO dates, flat settings, no secrets. */
 export function presentMonitor(m: Monitor, origin: string): MonitorDto {
@@ -32,9 +47,28 @@ export function presentIncident(i: IncidentListing): IncidentDto {
     id: i.id,
     monitorId: i.monitorId,
     monitorName: i.monitorName,
+    kind: i.kind,
     startedAt: iso(i.startedAt)!,
     resolvedAt: iso(i.resolvedAt),
     cause: i.cause,
+    acknowledgedAt: iso(i.acknowledgedAt),
+    notified: i.notified,
+  };
+}
+
+export function presentMaintenance(w: MaintenanceWindow, now = Date.now()): MaintenanceDto {
+  return {
+    id: w.id,
+    name: w.name,
+    monitorIds: w.monitorIds,
+    startsAt: iso(w.startsAt)!,
+    endsAt: iso(w.endsAt)!,
+    recurrence: w.recurrence
+      ? { frequency: w.recurrence.frequency, days: w.recurrence.days, timezone: w.recurrence.timezone, until: iso(w.recurrence.until) }
+      : null,
+    active: isActive(w, now),
+    finished: isFinished(w, now),
+    createdAt: iso(w.createdAt)!,
   };
 }
 

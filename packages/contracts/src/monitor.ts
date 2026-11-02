@@ -2,7 +2,8 @@ import * as v from "valibot";
 
 export const MONITOR_TYPES = ["http", "tcp", "minecraft", "heartbeat"] as const;
 export const HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] as const;
-export const MONITOR_STATUSES = ["pending", "up", "down", "paused"] as const;
+/** `degraded` is up but slower than the monitor's slow threshold. */
+export const MONITOR_STATUSES = ["pending", "up", "degraded", "down", "paused"] as const;
 export const LIMITS = { minIntervalSec: 30, maxIntervalSec: 86_400, maxHeaders: 20, maxBodyBytes: 16_384 } as const;
 
 export type MonitorType = (typeof MONITOR_TYPES)[number];
@@ -16,12 +17,42 @@ const name = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(100));
 const host = v.pipe(v.string(), v.trim(), v.toLowerCase(), v.regex(HOSTNAME, "must be a hostname"));
 const timeoutMs = v.optional(int(1000, 30_000), 10_000);
 
+const TAG = /^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,29}$/u;
+const id = v.pipe(v.string(), v.regex(/^[a-z2-7]{12}$/, "is not an id"));
+
 const common = {
   name,
   intervalSec: v.optional(int(LIMITS.minIntervalSec, LIMITS.maxIntervalSec), 300),
   paused: v.optional(v.boolean(), false),
   public: v.optional(v.boolean(), false),
+  /** Failed checks in a row before the monitor is down and an incident opens. */
+  failureThreshold: v.optional(int(1, 10), 2),
+  /** Successful checks in a row before a down monitor counts as recovered. */
+  recoveryThreshold: v.optional(int(1, 10), 1),
+  /** Responses slower than this mark the monitor degraded; null turns it off. */
+  slowThresholdMs: v.optional(v.nullable(int(50, 60_000)), null),
+  /** Slow checks in a row before a slow incident opens. */
+  slowAlertAfter: v.optional(int(1, 20), 3),
+  tags: v.optional(
+    v.pipe(v.array(v.pipe(v.string(), v.trim(), v.regex(TAG, "must be up to 30 letters, digits, spaces or - _ ."))), v.maxLength(10)),
+    [],
+  ),
+  /** While this monitor is down, this one does not alert: its outage is probably the same. */
+  dependsOn: v.optional(v.nullable(id), null),
+  /** Channels this monitor alerts; empty means every enabled channel. */
+  channelIds: v.optional(v.pipe(v.array(id), v.maxLength(20)), []),
 };
+
+/** The settings every monitor type shares, beyond its target. */
+export const MONITOR_OPTION_KEYS = [
+  "failureThreshold",
+  "recoveryThreshold",
+  "slowThresholdMs",
+  "slowAlertAfter",
+  "tags",
+  "dependsOn",
+  "channelIds",
+] as const;
 
 const httpUrl = v.pipe(
   v.string(),

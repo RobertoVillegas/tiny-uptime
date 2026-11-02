@@ -23,7 +23,7 @@ describe("applySettings", () => {
   it("pauses: stops checking and closes the open incident without alerting", () => {
     const monitor = httpMonitor({}, { status: "down", openIncidentId: "i1", failures: 3 });
     const change = applySettings(monitor, { ...monitor, paused: true }, NOW);
-    expect(change.closedIncidentId).toBe("i1");
+    expect(change.closedIncidentIds).toEqual(["i1"]);
     expect(change.state).toMatchObject({ status: "paused", nextCheckAt: null, failures: 0, openIncidentId: null });
   });
 

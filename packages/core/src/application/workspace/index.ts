@@ -1,9 +1,12 @@
 export * from "./access";
+export * from "./alert-policy";
 export * from "./alerts";
 export * from "./api-keys";
 export * from "./channels";
 export * from "./checks";
+export * from "./incidents";
 export type { WorkspaceDeps } from "./deps";
 export * from "./lifecycle";
+export * from "./maintenance";
 export * from "./monitors";
 export * from "./queries";

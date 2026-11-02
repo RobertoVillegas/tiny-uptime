@@ -9,7 +9,9 @@ import { errorText } from "../checks/timeout";
  */
 export function toOpenUptimePayload(event: AlertEvent) {
   return {
-    kind: event.kind === "opened" ? "incident.opened" : "incident.resolved",
+    kind: `incident.${event.kind}`,
+    ...(event.count !== undefined ? { count: event.count } : {}),
+    ...(event.slow ? { slow: true } : {}),
     incident: {
       id: event.incident.id,
       title: event.incident.title,

@@ -3,8 +3,8 @@ import { firstCheckAt, heartbeatDeadline } from "./schedule";
 
 export type SettingsChange = {
   state: MonitorState;
-  /** An open incident closed without an alert, because the monitor was paused. */
-  closedIncidentId: string | null;
+  /** Open incidents closed without an alert, because the monitor was paused. */
+  closedIncidentIds: string[];
 };
 
 /** How new settings move a monitor: pausing stops it, resuming starts over, a new target checks again soon. */
@@ -12,18 +12,28 @@ export function applySettings(monitor: Monitor, next: MonitorSettings, now: numb
   const current = monitor.state;
   if (next.paused && !monitor.paused) {
     return {
-      state: { ...current, status: "paused", statusChangedAt: now, nextCheckAt: null, failures: 0, openIncidentId: null },
-      closedIncidentId: current.openIncidentId,
+      state: {
+        ...current,
+        status: "paused",
+        statusChangedAt: now,
+        nextCheckAt: null,
+        failures: 0,
+        successes: 0,
+        slowStreak: 0,
+        openIncidentId: null,
+        openSlowIncidentId: null,
+      },
+      closedIncidentIds: [current.openIncidentId, current.openSlowIncidentId].filter((id): id is string => id !== null),
     };
   }
   if (!next.paused && monitor.paused) {
-    return { state: { ...current, status: "pending", statusChangedAt: now, nextCheckAt: firstCheckAt(next, now) }, closedIncidentId: null };
+    return { state: { ...current, status: "pending", statusChangedAt: now, nextCheckAt: firstCheckAt(next, now) }, closedIncidentIds: [] };
   }
   if (!next.paused && checkChanged(monitor, next)) {
     const nextCheckAt = next.type === "heartbeat" ? heartbeatDeadline(next, current.lastCheckedAt ?? now) : now;
-    return { state: { ...current, nextCheckAt }, closedIncidentId: null };
+    return { state: { ...current, nextCheckAt }, closedIncidentIds: [] };
   }
-  return { state: current, closedIncidentId: null };
+  return { state: current, closedIncidentIds: [] };
 }
 
 function checkChanged(monitor: Monitor, next: MonitorSettings): boolean {

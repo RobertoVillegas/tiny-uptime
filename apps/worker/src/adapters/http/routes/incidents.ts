@@ -13,6 +13,10 @@ export function incidentRoutes(router: Router): void {
       return reply(await c.workspace.listIncidents(c.principal, query), (list) => list.map(presentIncident));
     }),
   );
+  router.post(
+    "/api/v1/incidents/:id/acknowledge",
+    workspaceRoute(async (c) => reply(await c.workspace.acknowledgeIncident(c.principal, c.params.id!), () => ({ ok: true }))),
+  );
   router.get(
     "/api/v1/workspace",
     workspaceRoute(async (c) => reply(await c.workspace.info(c.principal))),

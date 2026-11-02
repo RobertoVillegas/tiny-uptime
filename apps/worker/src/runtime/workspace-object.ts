@@ -1,12 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
 import { Result } from "better-result";
-import type { ChannelInput, ChannelPatch, MonitorInput, MonitorPatch } from "@tiny-uptime/contracts";
+import type { AlertPolicy, ChannelInput, ChannelPatch, MaintenanceInput, MonitorInput, MonitorPatch } from "@tiny-uptime/contracts";
 import { toErrorData, workspace as ws, type Action, type AppError, type Principal } from "@tiny-uptime/core";
 import { checker } from "../adapters/checks/checker";
 import { webhookNotifier } from "../adapters/notify/webhook";
 import { SqliteChannels, SqliteDeliveries } from "../adapters/sqlite/workspace/channels";
 import { SqliteHistory } from "../adapters/sqlite/workspace/history";
 import { SqliteIncidents } from "../adapters/sqlite/workspace/incidents";
+import { SqliteMaintenance } from "../adapters/sqlite/workspace/maintenance";
 import { SqliteMonitors } from "../adapters/sqlite/workspace/monitors";
 import { AlarmScheduler } from "../adapters/sqlite/workspace/scheduler";
 import { SqliteApiKeys, SqliteWorkspaceInfo } from "../adapters/sqlite/workspace/workspace-info";
@@ -30,6 +31,7 @@ export class Workspace extends DurableObject<Env> {
       info: new SqliteWorkspaceInfo(sql),
       monitors: new SqliteMonitors(sql),
       incidents: new SqliteIncidents(sql),
+      maintenance: new SqliteMaintenance(sql),
       history: new SqliteHistory(sql),
       channels: new SqliteChannels(sql),
       deliveries: new SqliteDeliveries(sql),
@@ -68,8 +70,8 @@ export class Workspace extends DurableObject<Env> {
     return this.run(p, "read", () => Result.ok(this.d.info.get()!));
   }
 
-  listMonitors(p: Principal) {
-    return this.run(p, "read", () => Result.ok(ws.listMonitors(this.d)));
+  listMonitors(p: Principal, filter: { tag?: string } = {}) {
+    return this.run(p, "read", () => Result.ok(ws.listMonitors(this.d, filter)));
   }
 
   getMonitor(p: Principal, id: string) {
@@ -77,7 +79,7 @@ export class Workspace extends DurableObject<Env> {
   }
 
   createMonitor(p: Principal, input: MonitorInput) {
-    return this.run(p, "write", async () => Result.ok(await ws.createMonitor(this.d, input)));
+    return this.run(p, "write", () => ws.createMonitor(this.d, input));
   }
 
   updateMonitor(p: Principal, id: string, patch: MonitorPatch) {
@@ -94,6 +96,34 @@ export class Workspace extends DurableObject<Env> {
 
   listIncidents(p: Principal, query: { limit?: number; monitorId?: string }) {
     return this.run(p, "read", () => Result.ok(ws.listIncidents(this.d, query)));
+  }
+
+  acknowledgeIncident(p: Principal, id: string) {
+    return this.run(p, "write", () => ws.acknowledgeIncident(this.d, id, p));
+  }
+
+  listMaintenance(p: Principal) {
+    return this.run(p, "read", () => Result.ok(ws.listMaintenance(this.d)));
+  }
+
+  createMaintenance(p: Principal, input: MaintenanceInput) {
+    return this.run(p, "write", () => ws.createMaintenance(this.d, input));
+  }
+
+  updateMaintenance(p: Principal, id: string, input: MaintenanceInput) {
+    return this.run(p, "write", () => ws.updateMaintenance(this.d, id, input));
+  }
+
+  deleteMaintenance(p: Principal, id: string) {
+    return this.run(p, "write", () => ws.deleteMaintenance(this.d, id));
+  }
+
+  alertPolicy(p: Principal) {
+    return this.run(p, "read", () => Result.ok(ws.getAlertPolicy(this.d)));
+  }
+
+  setAlertPolicy(p: Principal, policy: AlertPolicy) {
+    return this.run(p, "write", () => ws.setAlertPolicy(this.d, policy));
   }
 
   listChannels(p: Principal) {

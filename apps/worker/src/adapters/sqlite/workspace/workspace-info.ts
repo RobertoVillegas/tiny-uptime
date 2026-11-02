@@ -1,4 +1,10 @@
-import type { ApiKey, ApiKeyRepository, WorkspaceInfoRepository } from "@tiny-uptime/core";
+import {
+  DEFAULT_ALERT_POLICY,
+  type AlertPolicy,
+  type ApiKey,
+  type ApiKeyRepository,
+  type WorkspaceInfoRepository,
+} from "@tiny-uptime/core";
 import { first } from "../rows";
 import { MIGRATIONS } from "./schema";
 
@@ -20,6 +26,15 @@ export class SqliteWorkspaceInfo implements WorkspaceInfoRepository {
   init(id: string, name: string, now: number): void {
     this.migrate();
     this.sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('id', ?), ('name', ?), ('created_at', ?)", id, name, String(now));
+  }
+
+  alertPolicy(): AlertPolicy {
+    const stored = this.meta("alert_policy");
+    return stored ? { ...DEFAULT_ALERT_POLICY, ...(JSON.parse(stored) as Partial<AlertPolicy>) } : DEFAULT_ALERT_POLICY;
+  }
+
+  setAlertPolicy(policy: AlertPolicy): void {
+    this.sql.exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('alert_policy', ?)", JSON.stringify(policy));
   }
 
   lastCleanupAt(): number {

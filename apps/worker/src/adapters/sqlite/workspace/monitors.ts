@@ -1,4 +1,4 @@
-import type { Monitor, MonitorRepository } from "@tiny-uptime/core";
+import { DEFAULT_OPTIONS, type Monitor, type MonitorOptions, type MonitorRepository } from "@tiny-uptime/core";
 import { bool, first, json } from "../rows";
 
 type Row = {
@@ -6,13 +6,17 @@ type Row = {
   name: string;
   type: Monitor["type"];
   config: string;
+  options: string;
   interval_sec: number;
   paused: number;
   public: number;
   heartbeat_token: string | null;
   status: Monitor["state"]["status"];
   failures: number;
+  successes: number;
+  slow_streak: number;
   open_incident: string | null;
+  open_slow_incident: string | null;
   next_at: number | null;
   last_at: number | null;
   last_ms: number | null;
@@ -21,6 +25,34 @@ type Row = {
   created_at: number;
   updated_at: number;
 };
+
+/** Column order shared by insert and update. */
+const COLUMNS = [
+  "name",
+  "type",
+  "config",
+  "options",
+  "interval_sec",
+  "paused",
+  "public",
+  "heartbeat_token",
+  "status",
+  "failures",
+  "successes",
+  "slow_streak",
+  "open_incident",
+  "open_slow_incident",
+  "next_at",
+  "last_at",
+  "last_ms",
+  "last_detail",
+  "changed_at",
+  "created_at",
+  "updated_at",
+] as const;
+
+const INSERT = `INSERT INTO monitor (id, ${COLUMNS.join(", ")}) VALUES (?${", ?".repeat(COLUMNS.length)})`;
+const UPDATE = `UPDATE monitor SET ${COLUMNS.map((c) => `${c} = ?`).join(", ")} WHERE id = ?`;
 
 export class SqliteMonitors implements MonitorRepository {
   constructor(private readonly sql: SqlStorage) {}
@@ -51,22 +83,11 @@ export class SqliteMonitors implements MonitorRepository {
   }
 
   insert(m: Monitor): void {
-    this.sql.exec(
-      `INSERT INTO monitor (id, name, type, config, interval_sec, paused, public, heartbeat_token, status, failures, open_incident,
-         next_at, last_at, last_ms, last_detail, changed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ...values(m),
-    );
+    this.sql.exec(INSERT, m.id, ...values(m));
   }
 
   save(m: Monitor): void {
-    this.sql.exec(
-      `UPDATE monitor SET name = ?, type = ?, config = ?, interval_sec = ?, paused = ?, public = ?, heartbeat_token = ?, status = ?,
-         failures = ?, open_incident = ?, next_at = ?, last_at = ?, last_ms = ?, last_detail = ?, changed_at = ?, created_at = ?, updated_at = ?
-       WHERE id = ?`,
-      ...values(m).slice(1),
-      m.id,
-    );
+    this.sql.exec(UPDATE, ...values(m), m.id);
   }
 
   delete(id: string): void {
@@ -77,17 +98,20 @@ export class SqliteMonitors implements MonitorRepository {
 function values(m: Monitor): SqlStorageValue[] {
   const s = m.state;
   return [
-    m.id,
     m.name,
     m.type,
     JSON.stringify(m.config),
+    JSON.stringify(m.options),
     m.intervalSec,
     m.paused ? 1 : 0,
     m.public ? 1 : 0,
     m.heartbeatToken,
     s.status,
     s.failures,
+    s.successes,
+    s.slowStreak,
     s.openIncidentId,
+    s.openSlowIncidentId,
     s.nextCheckAt,
     s.lastCheckedAt,
     s.lastLatencyMs,
@@ -104,6 +128,8 @@ function toMonitor(row: Row): Monitor {
     name: row.name,
     type: row.type,
     config: json(row.config),
+    // Monitors saved before options existed get the defaults.
+    options: { ...DEFAULT_OPTIONS, ...json<Partial<MonitorOptions>>(row.options) },
     intervalSec: row.interval_sec,
     paused: bool(row.paused),
     public: bool(row.public),
@@ -113,7 +139,10 @@ function toMonitor(row: Row): Monitor {
     state: {
       status: row.status,
       failures: row.failures,
+      successes: row.successes,
+      slowStreak: row.slow_streak,
       openIncidentId: row.open_incident,
+      openSlowIncidentId: row.open_slow_incident,
       nextCheckAt: row.next_at,
       lastCheckedAt: row.last_at,
       lastLatencyMs: row.last_ms,

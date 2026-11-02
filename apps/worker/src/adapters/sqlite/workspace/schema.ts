@@ -72,4 +72,28 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE rollup ADD COLUMN ms_min INTEGER;
   ALTER TABLE rollup ADD COLUMN ms_max INTEGER;
   `,
+  // 3: monitor options and counters, incident kinds and follow-ups, maintenance windows.
+  `
+  ALTER TABLE monitor ADD COLUMN options TEXT NOT NULL DEFAULT '{}';
+  ALTER TABLE monitor ADD COLUMN successes INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE monitor ADD COLUMN slow_streak INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE monitor ADD COLUMN open_slow_incident TEXT;
+  ALTER TABLE incident ADD COLUMN kind TEXT NOT NULL DEFAULT 'down';
+  ALTER TABLE incident ADD COLUMN acknowledged_at INTEGER;
+  ALTER TABLE incident ADD COLUMN acknowledged_by TEXT;
+  ALTER TABLE incident ADD COLUMN notified INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE incident ADD COLUMN reminders INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE incident ADD COLUMN last_reminder_at INTEGER;
+  ALTER TABLE incident ADD COLUMN escalated_at INTEGER;
+  CREATE INDEX incident_open ON incident (resolved_at) WHERE resolved_at IS NULL;
+  CREATE TABLE maintenance (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    monitor_ids TEXT NOT NULL,
+    starts_at INTEGER NOT NULL,
+    ends_at INTEGER NOT NULL,
+    recurrence TEXT,
+    created_at INTEGER NOT NULL
+  ) WITHOUT ROWID;
+  `,
 ];
