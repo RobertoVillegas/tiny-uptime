@@ -24,6 +24,7 @@ import type {
   StatusPage,
   StatusPageDraft,
   OAuthGrantDto,
+  ImportReport,
 } from "@tiny-uptime/contracts";
 import { call, type Transport } from "./http";
 
@@ -81,6 +82,12 @@ export function createClient(t: Transport) {
       update: (id: string, changes: MonitorPatch) => patch<Monitor>(`/api/v1/monitors/${id}`, changes),
       remove: (id: string) => del(`/api/v1/monitors/${id}`),
       stats: (id: string, hours: number) => get<MonitorStats>(`/api/v1/monitors/${id}/stats?hours=${hours}`),
+      exportAll: () =>
+        get<{ format: string; version: number; exportedAt: string; monitors: Record<string, unknown>[] }>("/api/v1/monitors/export"),
+      importList: (monitors: Record<string, unknown>[], dryRun: boolean) =>
+        post<ImportReport>("/api/v1/monitors/import", { monitors, dryRun }),
+      importOpenUptime: (input: { url: string; apiKey: string; dryRun: boolean }) =>
+        post<ImportReport>("/api/v1/monitors/import/openuptime", input),
     },
     incidents: {
       list: (query: { limit?: number; monitorId?: string } = {}) => {

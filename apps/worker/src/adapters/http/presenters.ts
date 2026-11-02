@@ -35,6 +35,13 @@ export function presentMonitor(m: Monitor, origin: string): MonitorDto {
   };
 }
 
+/** A monitor's settings alone, as export files carry them: no state, and no channels, which belong to the workspace. */
+export function presentSettings(m: Monitor): Record<string, unknown> {
+  const { state: _state, heartbeatToken: _token, createdAt: _created, updatedAt: _updated, ...settings } = m;
+  const { channelIds: _channels, ...input } = toInput(settings);
+  return { ...input, id: m.id };
+}
+
 export function presentChannel(c: Channel): ChannelDto {
   return { id: c.id, type: c.type, name: c.name, enabled: c.enabled, ...channelTarget(c), createdAt: iso(c.createdAt)! };
 }

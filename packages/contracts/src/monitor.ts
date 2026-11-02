@@ -46,8 +46,8 @@ const common = {
   recoveryThreshold: v.optional(int(1, 10), 1),
   /** Responses slower than this mark the monitor degraded; null turns it off. */
   slowThresholdMs: v.optional(v.nullable(int(50, 60_000)), null),
-  /** Slow checks in a row before a slow incident opens. */
-  slowAlertAfter: v.optional(int(1, 20), 3),
+  /** Slow checks in a row before a slow incident opens; 0 only marks the monitor degraded, without an incident. */
+  slowAlertAfter: v.optional(int(0, 20), 3),
   tags: v.optional(
     v.pipe(v.array(v.pipe(v.string(), v.trim(), v.regex(TAG, "must be up to 30 letters, digits, spaces or - _ ."))), v.maxLength(10)),
     [],

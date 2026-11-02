@@ -95,6 +95,14 @@ export class Workspace extends DurableObject<Env> {
     return this.run(p, "read", () => ws.getMonitor(this.d, id));
   }
 
+  importMonitors(p: Principal, candidates: ws.ImportCandidate[], dryRun: boolean) {
+    return this.run(p, "write", async () => {
+      const rows = await ws.importMonitors(this.d, candidates, dryRun);
+      const count = (status: string) => rows.filter((r) => r.status === status).length;
+      return Result.ok({ dryRun, rows, created: count("created"), duplicates: count("duplicate"), invalid: count("invalid") });
+    });
+  }
+
   createMonitor(p: Principal, input: MonitorInput) {
     return this.run(p, "write", () => ws.createMonitor(this.d, input));
   }

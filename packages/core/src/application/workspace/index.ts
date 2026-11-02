@@ -5,6 +5,7 @@ export * from "./api-keys";
 export * from "./channels";
 export * from "./checks";
 export * from "./incident-updates";
+export * from "./import";
 export * from "./incidents";
 export type { WorkspaceDeps } from "./deps";
 export * from "./lifecycle";

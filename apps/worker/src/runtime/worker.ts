@@ -8,6 +8,7 @@ import { channelRoutes } from "../adapters/http/routes/channels";
 import { incidentRoutes } from "../adapters/http/routes/incidents";
 import { maintenanceRoutes } from "../adapters/http/routes/maintenance";
 import { mcpRoutes } from "../adapters/http/routes/mcp";
+import { monitorImportRoutes } from "../adapters/http/routes/monitor-import";
 import { monitorRoutes } from "../adapters/http/routes/monitors";
 import { oauthRoutes } from "../adapters/http/routes/oauth";
 import { panelRoutes } from "../adapters/http/routes/panel";
@@ -24,6 +25,7 @@ for (const register of [
   publicRoutes,
   panelRoutes,
   adminRoutes,
+  monitorImportRoutes,
   monitorRoutes,
   incidentRoutes,
   maintenanceRoutes,

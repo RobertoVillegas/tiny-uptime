@@ -274,8 +274,8 @@ test("the form sends each new monitor type's own fields", async ({ page, request
     await page.getByLabel("Warn days ahead").fill("21");
   });
   await create(/PostgreSQL/, "Database", async () => {
-    await expect(page.getByLabel("Port")).toHaveAttribute("placeholder", "5432");
-    await page.getByLabel("Host").fill("db.example.com");
+    await expect(page.getByLabel("Port", { exact: true })).toHaveAttribute("placeholder", "5432");
+    await page.getByLabel("Host", { exact: true }).fill("db.example.com");
   });
 
   const monitors = (await (await request.get("/api/v1/monitors", { headers: key })).json()) as Record<string, unknown>[];
@@ -353,4 +353,52 @@ test("an MCP client is connected through the consent page and can be disconnecte
     data: { jsonrpc: "2.0", id: 1, method: "ping" },
   });
   expect(ping.status()).toBe(401);
+});
+
+test("monitors are exported to a file and imported from it with a preview", async ({ page, request }) => {
+  const source = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Source", slug: `src-${Date.now()}` } })
+  ).json();
+  const sourceKey = { authorization: `Bearer ${source.apiKey}` };
+  await request.post("/api/v1/monitors", {
+    headers: sourceKey,
+    data: { type: "http", name: "Shop", url: "https://shop.example/", paused: true },
+  });
+  await request.post("/api/v1/monitors", { headers: sourceKey, data: { type: "heartbeat", name: "Backups", paused: true } });
+
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Target", slug: `dst-${Date.now()}` } })
+  ).json();
+  await request.post("/api/v1/monitors", {
+    headers: { authorization: `Bearer ${workspace.apiKey}` },
+    data: { type: "heartbeat", name: "Backups", paused: true },
+  });
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "import@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Importer");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  const exported = await (await request.get("/api/v1/monitors/export", { headers: sourceKey })).json();
+  await page.getByRole("button", { name: "Import and export" }).click();
+  await page.getByRole("menuitem", { name: "Import monitors…" }).click();
+  await page.getByRole("tab", { name: "Export file" }).click();
+  await page
+    .getByLabel("Export file")
+    .setInputFiles({ name: "monitors.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(exported)) });
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.getByText("1 to import · 1 already here · 0 cannot be imported")).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Import 1 monitor" }).click();
+  await expect(page.getByText("1 monitor imported")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Shop/ })).toBeVisible();
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Import and export" }).click();
+  await page.getByRole("menuitem", { name: "Export as JSON" }).click();
+  const file = JSON.parse(await (await (await download).createReadStream()).toArray().then((chunks) => Buffer.concat(chunks).toString()));
+  expect(file.monitors.map((m: { name: string }) => m.name).toSorted()).toEqual(["Backups", "Shop"]);
 });

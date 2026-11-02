@@ -94,7 +94,11 @@ export function AlertRulesFields({ value, onChange, errors, monitorId, heartbeat
               onChange={(e) => set("slowThresholdMs", e.target.value)}
             />
           </Field>
-          <Field label="Alert after slow checks" description="Slow checks in a row before a slow incident." error={errors.slowAlertAfter}>
+          <Field
+            label="Alert after slow checks"
+            description="Slow checks in a row before a slow incident. 0 only marks it degraded."
+            error={errors.slowAlertAfter}
+          >
             <Input
               inputMode="numeric"
               value={value.slowAlertAfter}

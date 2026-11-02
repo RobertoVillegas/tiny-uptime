@@ -53,6 +53,16 @@ describe("slow responses", () => {
     expect(second.events).toEqual([{ type: "slow", cause: "responding in 900 ms, slower than 500 ms" }]);
   });
 
+  it("only marks the monitor degraded when slow alerts are off", () => {
+    const quiet = httpMonitor(
+      { options: { ...httpMonitor().options, slowThresholdMs: 500, slowAlertAfter: 0 } },
+      { status: "degraded", slowStreak: 9 },
+    );
+    const update = afterCheck(quiet, pass(900), NOW);
+    expect(update.state.status).toBe("degraded");
+    expect(update.events).toEqual([]);
+  });
+
   it("resolves the slow incident when speed returns", () => {
     const update = afterCheck(slowMonitor({ status: "degraded", slowStreak: 4, openSlowIncidentId: "s1" }), pass(100), NOW);
     expect(update.state).toMatchObject({ status: "up", slowStreak: 0, openSlowIncidentId: null });

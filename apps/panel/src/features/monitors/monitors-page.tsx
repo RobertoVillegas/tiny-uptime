@@ -3,14 +3,17 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { Monitor } from "@tiny-uptime/contracts";
 import { Button } from "@tiny-uptime/ui/components/button";
 import { Dialog } from "@tiny-uptime/ui/components/dialog";
+import { Menu } from "@tiny-uptime/ui/components/menu";
 import { StatusBadge, StatusDot } from "@tiny-uptime/ui/components/status";
 import { EmptyState, Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { notify } from "@tiny-uptime/ui/components/toast";
-import { Activity, Plus } from "lucide-react";
+import { Activity, Download, Ellipsis, Plus, Upload } from "lucide-react";
 import { useState } from "react";
+import { api, messageOf } from "../../lib/api";
 import { ms, timeAgo } from "../../lib/format";
 import { monitorsQuery } from "../../lib/queries";
 import { PageHeader } from "../shell/page-header";
+import { ImportDialog } from "./import-dialog";
 import { MonitorForm } from "./monitor-form";
 import { useCreateMonitor } from "./mutations";
 import { targetOf, typeLabel } from "./describe";
@@ -18,6 +21,7 @@ import { targetOf, typeLabel } from "./describe";
 export function MonitorsPage() {
   const monitors = useQuery(monitorsQuery());
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const create = useCreateMonitor();
   const navigate = useNavigate();
   const [tag, setTag] = useState<string | null>(null);
@@ -31,12 +35,26 @@ export function MonitorsPage() {
         title="Monitors"
         description={monitors.data ? summary(all) : " "}
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
-            <Plus />
-            New monitor
-          </Button>
+          <div className="flex gap-2">
+            <Menu
+              trigger={
+                <Button variant="secondary" size="icon" aria-label="Import and export">
+                  <Ellipsis />
+                </Button>
+              }
+              actions={[
+                { label: "Import monitors…", icon: <Upload />, onClick: () => setImporting(true) },
+                { label: "Export as JSON", icon: <Download />, onClick: () => void exportMonitors() },
+              ]}
+            />
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              <Plus />
+              New monitor
+            </Button>
+          </div>
         }
       />
+      <ImportDialog open={importing} onOpenChange={setImporting} />
       <Dialog
         open={creating}
         onOpenChange={setCreating}
@@ -153,4 +171,18 @@ function ListSkeleton() {
       ))}
     </div>
   );
+}
+
+/** Downloads every monitor as JSON, in the shape Import reads back. */
+async function exportMonitors() {
+  try {
+    const data = await api.monitors.exportAll();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    link.download = `tiny-uptime-monitors-${data.exportedAt.slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (error) {
+    notify("Could not export", { type: "error", description: messageOf(error) });
+  }
 }

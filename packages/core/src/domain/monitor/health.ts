@@ -105,7 +105,7 @@ function applySpeed(monitor: Monitor, state: MonitorState, latencyMs: number | n
   const slowStreak = slow ? state.slowStreak + 1 : 0;
   const status = slow ? "degraded" : "up";
   let next: MonitorState = { ...state, slowStreak, status, statusChangedAt: status === monitor.state.status ? state.statusChangedAt : now };
-  if (slow && slowStreak >= slowAlertAfter && !next.openSlowIncidentId) {
+  if (slow && slowAlertAfter > 0 && slowStreak >= slowAlertAfter && !next.openSlowIncidentId) {
     events.push({ type: "slow", cause: `responding in ${latencyMs} ms, slower than ${slowThresholdMs} ms` });
   }
   if (!slow) next = closeSlow(next, events, true);
