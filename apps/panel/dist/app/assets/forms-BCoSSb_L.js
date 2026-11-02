@@ -1,1 +1,0 @@
-function e(e){let n=e[0];if(n){if(typeof n==`string`)return n;if(typeof n==`object`&&`message`in n)return t(String(n.message))}}function t(e){return e.charAt(0).toUpperCase()+e.slice(1)}export{e as t};
