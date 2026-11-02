@@ -7,9 +7,9 @@ export function renderStatusFeed(page: PublicStatusPage, link: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
 <channel>
-<title>${esc(page.title)} status</title>
+<title>${esc(page.title)}</title>
 <link>${esc(link)}</link>
-<description>Incidents on the ${esc(page.title)} status page</description>
+<description>Incidents: ${esc(page.title)}</description>
 <lastBuildDate>${new Date(page.updatedAt).toUTCString()}</lastBuildDate>
 ${incidents.map((i) => item(i, link)).join("\n")}
 </channel>

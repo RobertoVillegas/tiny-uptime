@@ -19,7 +19,7 @@ export function renderStatusPage(page: PublicStatusPage, opts: { feedPath: strin
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(page.title)} status</title>
+<title>${esc(page.title)}</title>
 <meta name="description" content="${esc(page.description || `Current status of ${page.title}`)}">
 ${opts.feedPath ? `<link rel="alternate" type="application/rss+xml" title="${esc(page.title)} incidents" href="${esc(opts.feedPath)}">` : ""}
 <style>${STATUS_PAGE_CSS}</style>
