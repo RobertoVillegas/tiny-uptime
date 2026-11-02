@@ -12,7 +12,7 @@ import { notify } from "@tiny-uptime/ui/components/toast";
 import { ChevronLeft, Ellipsis, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ms, percent, timeAgo } from "../../lib/format";
-import { monitorQuery, statsQuery } from "../../lib/queries";
+import { incidentsQuery, monitorQuery, statsQuery } from "../../lib/queries";
 import { monitorRoute } from "../../router";
 import { IncidentList } from "../incidents/incident-list";
 import { NotFound } from "../shell/not-found";
@@ -39,6 +39,7 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
   const [range, setRange] = useState<(typeof RANGES)[number]["value"]>("24");
   const [editing, setEditing] = useState(false);
   const stats = useQuery(statsQuery(m.id, Number(range)));
+  const incidents = useQuery(incidentsQuery(m.id));
   const update = useUpdateMonitor(m.id);
   const pause = usePauseMonitor(m.id);
   const remove = useDeleteMonitor();
@@ -106,7 +107,9 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
               className="col-span-2 sm:col-span-1"
             />
           </div>
-          <div className="p-5">{stats.data ? <UptimeBars stats={stats.data} /> : <Skeleton className="h-10 w-full" />}</div>
+          <div className="p-5">
+            {stats.data ? <UptimeBars stats={stats.data} incidents={incidents.data ?? []} /> : <Skeleton className="h-10 w-full" />}
+          </div>
         </Section>
 
         {m.heartbeatUrl ? (

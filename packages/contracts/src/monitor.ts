@@ -103,5 +103,12 @@ export type MonitorStats = {
   hours: number;
   uptime: number | null;
   avgLatencyMs: number | null;
-  series: { hour: string; checks: number; ok: number; avgLatencyMs: number | null }[];
+  series: {
+    hour: string;
+    checks: number;
+    ok: number;
+    avgLatencyMs: number | null;
+    minLatencyMs: number | null;
+    maxLatencyMs: number | null;
+  }[];
 };

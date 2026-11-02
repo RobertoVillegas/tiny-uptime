@@ -164,6 +164,9 @@ describe("monitors", () => {
 
     const stats = (await call("GET", `/api/v1/monitors/${id}/stats?hours=24`, { key })).body;
     expect(stats.series.reduce((n: number, h: { checks: number }) => n + h.checks, 0)).toBe(4);
+    const hour = stats.series.at(-1);
+    expect(hour.minLatencyMs).toBeTypeOf("number");
+    expect(hour.maxLatencyMs).toBeGreaterThanOrEqual(hour.minLatencyMs);
   });
 
   it("fails a keyword check when the word is missing", async () => {

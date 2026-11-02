@@ -67,4 +67,9 @@ export const MIGRATIONS: string[] = [
     last_error TEXT
   ) WITHOUT ROWID;
   `,
+  // 2: fastest and slowest response per hour, for the uptime bar details.
+  `
+  ALTER TABLE rollup ADD COLUMN ms_min INTEGER;
+  ALTER TABLE rollup ADD COLUMN ms_max INTEGER;
+  `,
 ];

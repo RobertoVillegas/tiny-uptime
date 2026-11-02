@@ -29,7 +29,15 @@ export interface IncidentRepository {
   purgeResolvedBefore(cutoff: number): void;
 }
 
-export type HourlyPoint = { hour: number; checks: number; ok: number; latencySum: number; latencyCount: number };
+export type HourlyPoint = {
+  hour: number;
+  checks: number;
+  ok: number;
+  latencySum: number;
+  latencyCount: number;
+  latencyMin: number | null;
+  latencyMax: number | null;
+};
 
 /** Check results folded into one row per monitor and hour. */
 export interface HistoryRepository {

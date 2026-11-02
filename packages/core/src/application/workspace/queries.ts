@@ -23,6 +23,8 @@ export function monitorStats(d: WorkspaceDeps, id: string, requestedHours: numbe
         checks: p.checks,
         ok: p.ok,
         avgLatencyMs: p.latencyCount ? Math.round(p.latencySum / p.latencyCount) : null,
+        minLatencyMs: p.latencyMin,
+        maxLatencyMs: p.latencyMax,
       })),
     };
   });
