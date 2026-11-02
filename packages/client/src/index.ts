@@ -6,6 +6,8 @@ import type {
   ChannelPatch,
   CreatedApiKey,
   Incident,
+  IncidentUpdate,
+  IncidentUpdateInput,
   InviteInfo,
   Maintenance,
   MaintenanceDraft,
@@ -19,6 +21,8 @@ import type {
   PendingInvite,
   Role,
   SignInStage,
+  StatusPage,
+  StatusPageDraft,
 } from "@tiny-uptime/contracts";
 import { call, type Transport } from "./http";
 
@@ -81,6 +85,16 @@ export function createClient(t: Transport) {
         return get<Incident[]>(`/api/v1/incidents${params.size ? `?${params}` : ""}`);
       },
       acknowledge: (id: string) => post<{ ok: true }>(`/api/v1/incidents/${id}/acknowledge`),
+      updates: (id: string) => get<IncidentUpdate[]>(`/api/v1/incidents/${id}/updates`),
+      postUpdate: (id: string, update: Partial<IncidentUpdateInput> & { body: string }) =>
+        post<IncidentUpdate>(`/api/v1/incidents/${id}/updates`, update),
+    },
+    statusPages: {
+      list: () => get<StatusPage[]>("/api/v1/status-pages"),
+      get: (id: string) => get<StatusPage>(`/api/v1/status-pages/${id}`),
+      create: (draft: StatusPageDraft) => post<StatusPage>("/api/v1/status-pages", draft),
+      update: (id: string, draft: StatusPageDraft) => patch<StatusPage>(`/api/v1/status-pages/${id}`, draft),
+      remove: (id: string) => del(`/api/v1/status-pages/${id}`),
     },
     maintenance: {
       list: () => get<Maintenance[]>("/api/v1/maintenance"),

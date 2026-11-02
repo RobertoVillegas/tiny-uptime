@@ -154,3 +154,38 @@ test("alert rules, maintenance and follow-ups can be set from the panel", async 
   expect((await (await request.get("/api/v1/alert-policy", { headers: key })).json()).reminderEveryMinutes).toBe(30);
   await expectAccessible(page);
 });
+
+test("a status page is published from the panel and served publicly", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Pub", slug: `pub-${Date.now()}` } })
+  ).json();
+  const key = { authorization: `Bearer ${workspace.apiKey}` };
+  await request.post("/api/v1/monitors", { headers: key, data: { type: "heartbeat", name: "Checkout API", paused: true } });
+  await request.post("/api/v1/monitors", { headers: key, data: { type: "heartbeat", name: "Secret job", paused: true } });
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "pub@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Pub");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  await page.getByRole("link", { name: "Status pages" }).first().click();
+  await expect(page.getByText("No status pages yet")).toBeVisible();
+  await page.getByRole("link", { name: "New status page" }).click();
+  const slug = `pub-page-${Date.now()}`;
+  await page.getByLabel("Title").fill("Pub status");
+  await page.getByLabel("Address").fill(slug);
+  await page.getByRole("combobox", { name: "Add a monitor" }).click();
+  await page.getByRole("option", { name: "Checkout API" }).click();
+  await expect(page.getByLabel("Group for Checkout API")).toHaveValue("Services");
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Publish page" }).click();
+  await expect(page.getByRole("heading", { name: "Pub status" })).toBeVisible();
+
+  const html = await (await request.get(`/s/${slug}`)).text();
+  expect(html).toContain("Pub status");
+  expect(html).toContain("Checkout API");
+  expect(html).not.toContain("Secret job");
+});

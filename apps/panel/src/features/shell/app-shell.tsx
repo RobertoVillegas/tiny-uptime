@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Button } from "@tiny-uptime/ui/components/button";
 import { Menu } from "@tiny-uptime/ui/components/menu";
 import { cn } from "cn";
-import { Activity, Bell, CalendarClock, ChevronsUpDown, Settings, TriangleAlert, UserRound, LogOut } from "lucide-react";
+import { Activity, Bell, CalendarClock, ChevronsUpDown, Globe, Settings, TriangleAlert, UserRound, LogOut } from "lucide-react";
 import { api, currentWorkspaceId, setCurrentWorkspace } from "../../lib/api";
 import { authedRoute } from "../../router";
 import { Logo } from "./logo";
@@ -11,6 +11,7 @@ import { Logo } from "./logo";
 const NAV = [
   { to: "/monitors", label: "Monitors", icon: Activity },
   { to: "/incidents", label: "Incidents", icon: TriangleAlert },
+  { to: "/status-pages", label: "Status pages", icon: Globe },
   { to: "/maintenance", label: "Maintenance", icon: CalendarClock },
   { to: "/alerts", label: "Alerts", icon: Bell },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -34,7 +35,7 @@ export function AppShell() {
           </Link>
           <WorkspaceSwitcher />
         </div>
-        <nav aria-label="Main" className="grid grid-cols-5 gap-1 lg:flex lg:flex-col">
+        <nav aria-label="Main" className="grid grid-cols-3 gap-1 lg:flex lg:flex-col">
           {NAV.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}

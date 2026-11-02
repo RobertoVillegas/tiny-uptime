@@ -9,6 +9,7 @@ import { Check, CircleCheck } from "lucide-react";
 import { api, currentWorkspaceId } from "../../lib/api";
 import { dateTime, duration } from "../../lib/format";
 import { incidentsQuery } from "../../lib/queries";
+import { IncidentUpdatesDialog } from "./incident-updates";
 import { authedRoute } from "../../router";
 
 /** Incidents newest first: ongoing ones say so and can be acknowledged, resolved ones say how long they lasted. */
@@ -76,6 +77,7 @@ function IncidentRow({ incident: i, showMonitor, canAcknowledge }: { incident: I
           {i.notified ? "" : " · not alerted, its dependency was down"}
         </p>
       </div>
+      <IncidentUpdatesDialog incident={i} canWrite={canAcknowledge} />
       {open && !i.acknowledgedAt && i.notified && canAcknowledge ? (
         <Button size="sm" loading={acknowledge.isPending} onClick={() => acknowledge.mutate()}>
           <Check />

@@ -2,10 +2,10 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { HTTP_METHODS, MonitorInput, validate, type Monitor, type MonitorDraft, type MonitorType } from "@tiny-uptime/contracts";
 import { Button } from "@tiny-uptime/ui/components/button";
 import { Field } from "@tiny-uptime/ui/components/field";
-import { Input, inputClass } from "@tiny-uptime/ui/components/input";
+import { Textarea } from "@tiny-uptime/ui/components/textarea";
+import { Input } from "@tiny-uptime/ui/components/input";
 import { Select } from "@tiny-uptime/ui/components/select";
 import { Switch } from "@tiny-uptime/ui/components/switch";
-import { cn } from "cn";
 import { useState } from "react";
 import { ApiError, messageOf } from "../../lib/api";
 import { AlertRulesFields, initialRules, RULE_FIELDS, rulesToDraft, type AlertRules } from "./alert-rules";
@@ -225,10 +225,10 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
           <form.Field name="headers">
             {(field) => (
               <Field label="Request headers" description="One per line, like Authorization: Bearer …" error={errors.headers}>
-                <textarea
+                <Textarea
                   rows={2}
                   spellCheck={false}
-                  className={cn(inputClass, "h-auto py-2 font-mono text-[0.8125rem]")}
+                  className="font-mono text-[0.8125rem]"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
@@ -239,10 +239,10 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
             <form.Field name="body">
               {(field) => (
                 <Field label="Request body" error={errors.body}>
-                  <textarea
+                  <Textarea
                     rows={3}
                     spellCheck={false}
-                    className={cn(inputClass, "h-auto py-2 font-mono text-[0.8125rem]")}
+                    className="font-mono text-[0.8125rem]"
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />

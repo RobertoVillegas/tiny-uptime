@@ -60,6 +60,16 @@ const incidents = createRoute({
   path: "/incidents",
   component: lazyRouteComponent(() => import("./features/incidents/incidents-page"), "IncidentsPage"),
 });
+const statusPages = createRoute({
+  getParentRoute: () => authed,
+  path: "/status-pages",
+  component: lazyRouteComponent(() => import("./features/status-pages/status-pages-page"), "StatusPagesPage"),
+});
+const statusPage = createRoute({
+  getParentRoute: () => authed,
+  path: "/status-pages/$pageId",
+  component: lazyRouteComponent(() => import("./features/status-pages/status-page-editor"), "StatusPageEditor"),
+});
 const maintenance = createRoute({
   getParentRoute: () => authed,
   path: "/maintenance",
@@ -85,7 +95,7 @@ const routeTree = root.addChildren([
   login,
   invite,
   recover,
-  authed.addChildren([index, monitors, monitor, incidents, maintenance, channels, settings, account]),
+  authed.addChildren([index, monitors, monitor, incidents, statusPages, statusPage, maintenance, channels, settings, account]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {
@@ -109,3 +119,4 @@ export const monitorRoute = monitor;
 export const authedRoute = authed;
 export const inviteRoute = invite;
 export const loginRoute = login;
+export const statusPageRoute = statusPage;

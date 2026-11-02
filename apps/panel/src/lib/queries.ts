@@ -25,3 +25,8 @@ export const membersQuery = (workspaceId: string) =>
 export const maintenanceQuery = () =>
   queryOptions({ queryKey: [ws(), "maintenance"], queryFn: () => api.maintenance.list(), refetchInterval: 60_000 });
 export const alertPolicyQuery = () => queryOptions({ queryKey: [ws(), "alert-policy"], queryFn: () => api.alertPolicy.get() });
+export const statusPagesQuery = () => queryOptions({ queryKey: [ws(), "status-pages"], queryFn: () => api.statusPages.list() });
+export const statusPageQuery = (id: string) =>
+  queryOptions({ queryKey: [ws(), "status-pages", id], queryFn: () => api.statusPages.get(id) });
+export const incidentUpdatesQuery = (id: string) =>
+  queryOptions({ queryKey: [ws(), "incidents", id, "updates"], queryFn: () => api.incidents.updates(id) });
