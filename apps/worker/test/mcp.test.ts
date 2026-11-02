@@ -61,6 +61,9 @@ describe("MCP server", () => {
     expect(created.body.result.isError).toBeUndefined();
     const monitor = data(created);
     expect(monitor.heartbeatUrl).toContain(`${BASE}/`);
+    expect(Object.keys(monitor)).not.toContain("state");
+    expect(Object.keys(monitor)).not.toContain("heartbeatToken");
+    expect(typeof monitor.createdAt).toBe("string");
 
     const renamed = data(await call(ws.apiKey, "update_monitor", { id: monitor.id, changes: { name: "Nightly backups" } }));
     expect(renamed.name).toBe("Nightly backups");

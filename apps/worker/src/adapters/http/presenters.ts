@@ -19,19 +19,19 @@ import {
 
 /** Domain objects as the API shows them: ISO dates, flat settings, no secrets. */
 export function presentMonitor(m: Monitor, origin: string): MonitorDto {
-  const s = m.state;
+  const { state: s, heartbeatToken, createdAt, updatedAt, ...settings } = m;
   return {
+    ...toInput(settings),
     id: m.id,
-    ...toInput(m),
     status: s.status,
     lastCheckedAt: iso(s.lastCheckedAt),
     lastLatencyMs: s.lastLatencyMs,
     lastDetail: s.lastDetail,
     statusChangedAt: iso(s.statusChangedAt)!,
     nextCheckAt: iso(s.nextCheckAt),
-    createdAt: iso(m.createdAt)!,
-    updatedAt: iso(m.updatedAt)!,
-    ...(m.heartbeatToken ? { heartbeatUrl: `${origin}/api/heartbeat/${m.heartbeatToken}` } : {}),
+    createdAt: iso(createdAt)!,
+    updatedAt: iso(updatedAt)!,
+    ...(heartbeatToken ? { heartbeatUrl: `${origin}/api/heartbeat/${heartbeatToken}` } : {}),
   };
 }
 
