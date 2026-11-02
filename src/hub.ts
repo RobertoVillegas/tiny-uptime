@@ -230,15 +230,33 @@ export class Hub extends DurableObject<Env> {
     if (monitor.status !== "pending" || status === "down") await this.alert(monitor, status, now, detail);
   }
 
+  // Same body as OpenUptime's webhook channel, so existing receivers (kukuroo's /hook/openuptime) keep working.
+  // An incident spans one down period; it is named after the monitor and the moment it went down.
   private async alert(monitor: MonitorRow, status: Status, at: number, detail: string): Promise<void> {
-    if (!this.env.ALERT_WEBHOOK_URL) return;
+    if (!this.env.ALERT_WEBHOOK_URL) {
+      console.warn("alert skipped: ALERT_WEBHOOK_URL is not set", monitor.id, status);
+      return;
+    }
+    const startedAt = status === "down" ? at : monitor.changed_at;
+    const body = {
+      kind: status === "down" ? "incident.opened" : "incident.resolved",
+      incident: {
+        id: `${monitor.id}-${startedAt}`,
+        title: status === "down" ? detail : `${monitor.name} recovered`,
+        startedAt: new Date(startedAt).toISOString(),
+        resolvedAt: status === "down" ? null : new Date(at).toISOString(),
+      },
+      monitor: { name: monitor.name, target: monitor.target ?? "" },
+    };
     try {
-      await fetch(this.env.ALERT_WEBHOOK_URL, {
+      const res = await fetch(this.env.ALERT_WEBHOOK_URL, {
         method: "POST",
         headers: { "content-type": "application/json", "user-agent": "tiny-uptime/0.1" },
-        body: JSON.stringify({ monitor: { id: monitor.id, name: monitor.name }, status, at: new Date(at).toISOString(), detail }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
       });
+      if (res.ok) console.log("alert sent", monitor.id, body.kind);
+      else console.error("alert webhook rejected", monitor.id, res.status);
     } catch (error) {
       console.error("alert webhook failed", monitor.id, error);
     }
