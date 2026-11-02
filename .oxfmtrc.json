@@ -1,4 +1,12 @@
 {
   "printWidth": 140,
-  "ignorePatterns": ["**/routeTree.gen.ts", "**/dist/**", "**/.wrangler/**", "pnpm-lock.yaml", "test-results/**", "playwright-report/**"]
+  "ignorePatterns": [
+    "**/routeTree.gen.ts",
+    "**/dist/**",
+    "**/.wrangler/**",
+    "pnpm-lock.yaml",
+    "test-results/**",
+    "playwright-report/**",
+    ".claude/**"
+  ]
 }

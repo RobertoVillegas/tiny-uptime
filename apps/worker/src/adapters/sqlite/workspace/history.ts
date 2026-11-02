@@ -12,7 +12,12 @@ type Row = {
   ms_max: number | null;
 };
 
-/** One row per monitor and hour: a check costs one upsert, and a day of history is 24 rows. */
+const DAY = 24 * HOUR;
+
+/**
+ * One row per monitor and hour, plus one per monitor and day for status pages' 90-day bars:
+ * a check costs two upserts, and a page reads 90 rows per monitor instead of 2,160.
+ */
 export class SqliteHistory implements HistoryRepository {
   constructor(private readonly sql: SqlStorage) {}
 
@@ -31,6 +36,25 @@ export class SqliteHistory implements HistoryRepository {
       sample.latencyMs,
       sample.latencyMs,
     );
+    this.sql.exec(
+      `INSERT INTO rollup_daily (monitor_id, day, checks, ok) VALUES (?, ?, 1, ?)
+       ON CONFLICT (monitor_id, day) DO UPDATE SET checks = checks + 1, ok = ok + excluded.ok`,
+      monitorId,
+      Math.floor(at / DAY) * DAY,
+      sample.ok ? 1 : 0,
+    );
+  }
+
+  daily(monitorIds: string[], since: number): { monitorId: string; day: number; checks: number; ok: number }[] {
+    if (monitorIds.length === 0) return [];
+    return this.sql
+      .exec<{ monitor_id: string; day: number; checks: number; ok: number }>(
+        `SELECT * FROM rollup_daily WHERE day >= ? AND monitor_id IN (${monitorIds.map(() => "?").join(", ")})`,
+        since,
+        ...monitorIds,
+      )
+      .toArray()
+      .map((r) => ({ monitorId: r.monitor_id, day: r.day, checks: r.checks, ok: r.ok }));
   }
 
   hourly(monitorId: string, since: number): HourlyPoint[] {
@@ -49,10 +73,12 @@ export class SqliteHistory implements HistoryRepository {
 
   deleteForMonitor(monitorId: string): void {
     this.sql.exec("DELETE FROM rollup WHERE monitor_id = ?", monitorId);
+    this.sql.exec("DELETE FROM rollup_daily WHERE monitor_id = ?", monitorId);
   }
 
   purgeBefore(cutoff: number): void {
     this.sql.exec("DELETE FROM rollup WHERE hour < ?", cutoff);
+    this.sql.exec("DELETE FROM rollup_daily WHERE day < ?", cutoff);
   }
 }
 

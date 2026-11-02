@@ -1,6 +1,15 @@
 import { DurableObject } from "cloudflare:workers";
 import { Result } from "better-result";
-import type { AlertPolicy, ChannelInput, ChannelPatch, MaintenanceInput, MonitorInput, MonitorPatch } from "@tiny-uptime/contracts";
+import type {
+  AlertPolicy,
+  ChannelInput,
+  ChannelPatch,
+  IncidentUpdateInput,
+  MaintenanceInput,
+  MonitorInput,
+  MonitorPatch,
+  StatusPageInput,
+} from "@tiny-uptime/contracts";
 import { toErrorData, workspace as ws, type Action, type AppError, type Principal } from "@tiny-uptime/core";
 import { checker } from "../adapters/checks/checker";
 import { webhookNotifier } from "../adapters/notify/webhook";
@@ -9,6 +18,7 @@ import { SqliteHistory } from "../adapters/sqlite/workspace/history";
 import { SqliteIncidents } from "../adapters/sqlite/workspace/incidents";
 import { SqliteMaintenance } from "../adapters/sqlite/workspace/maintenance";
 import { SqliteMonitors } from "../adapters/sqlite/workspace/monitors";
+import { SqliteIncidentUpdates, SqliteStatusPages } from "../adapters/sqlite/workspace/status-pages";
 import { AlarmScheduler } from "../adapters/sqlite/workspace/scheduler";
 import { SqliteApiKeys, SqliteWorkspaceInfo } from "../adapters/sqlite/workspace/workspace-info";
 import { cryptoIds, systemClock } from "../adapters/system";
@@ -31,6 +41,8 @@ export class Workspace extends DurableObject<Env> {
       info: new SqliteWorkspaceInfo(sql),
       monitors: new SqliteMonitors(sql),
       incidents: new SqliteIncidents(sql),
+      incidentUpdates: new SqliteIncidentUpdates(sql),
+      statusPages: new SqliteStatusPages(sql),
       maintenance: new SqliteMaintenance(sql),
       history: new SqliteHistory(sql),
       channels: new SqliteChannels(sql),
@@ -58,6 +70,11 @@ export class Workspace extends DurableObject<Env> {
 
   publicStatus() {
     return ws.publicStatus(this.d);
+  }
+
+  /** A status page by id, or the workspace's legacy page of public monitors when id is null. */
+  publicPage(pageId: string | null) {
+    return pageId ? ws.publicStatusPage(this.d, pageId) : ws.legacyPublicPage(this.d);
   }
 
   override alarm(): Promise<void> {
@@ -96,6 +113,35 @@ export class Workspace extends DurableObject<Env> {
 
   listIncidents(p: Principal, query: { limit?: number; monitorId?: string }) {
     return this.run(p, "read", () => Result.ok(ws.listIncidents(this.d, query)));
+  }
+
+  listIncidentUpdates(p: Principal, incidentId: string) {
+    return this.run(p, "read", () => ws.listIncidentUpdates(this.d, incidentId));
+  }
+
+  postIncidentUpdate(p: Principal, incidentId: string, input: IncidentUpdateInput) {
+    return this.run(p, "write", () => ws.postIncidentUpdate(this.d, incidentId, input, p));
+  }
+
+  listStatusPages(p: Principal) {
+    return this.run(p, "read", () => Result.ok(ws.listStatusPages(this.d)));
+  }
+
+  getStatusPage(p: Principal, id: string) {
+    return this.run(p, "read", () => ws.getStatusPage(this.d, id));
+  }
+
+  saveStatusPage(p: Principal, id: string, mode: "create" | "update", input: StatusPageInput) {
+    return this.run(p, "write", () => ws.saveStatusPage(this.d, id, mode, input));
+  }
+
+  deleteStatusPage(p: Principal, id: string) {
+    return this.run(p, "write", () => ws.deleteStatusPage(this.d, id));
+  }
+
+  /** Whether the caller may change status pages, checked before claiming addresses in the directory. */
+  canWrite(p: Principal) {
+    return this.run(p, "write", () => Result.ok(true));
   }
 
   acknowledgeIncident(p: Principal, id: string) {

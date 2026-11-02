@@ -10,6 +10,7 @@ import { maintenanceRoutes } from "../adapters/http/routes/maintenance";
 import { monitorRoutes } from "../adapters/http/routes/monitors";
 import { panelRoutes } from "../adapters/http/routes/panel";
 import { publicRoutes } from "../adapters/http/routes/public";
+import { statusPageRoutes } from "../adapters/http/routes/status-pages";
 import type { Env } from "./env";
 
 export { AuthStore } from "./auth-object";
@@ -24,6 +25,7 @@ for (const register of [
   monitorRoutes,
   incidentRoutes,
   maintenanceRoutes,
+  statusPageRoutes,
   channelRoutes,
   apiKeyRoutes,
   signInRoutes,

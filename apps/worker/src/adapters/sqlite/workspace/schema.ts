@@ -96,4 +96,47 @@ export const MIGRATIONS: string[] = [
     created_at INTEGER NOT NULL
   ) WITHOUT ROWID;
   `,
+  // 4: status pages and their components, incident updates, and daily history for 90-day bars.
+  `
+  CREATE TABLE status_page (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    theme TEXT NOT NULL DEFAULT 'auto',
+    show_latency INTEGER NOT NULL DEFAULT 1,
+    external_url TEXT,
+    hide_branding INTEGER NOT NULL DEFAULT 0,
+    ok_pct REAL NOT NULL DEFAULT 99.9,
+    warn_pct REAL NOT NULL DEFAULT 98,
+    custom_domain TEXT UNIQUE,
+    created_at INTEGER NOT NULL
+  ) WITHOUT ROWID;
+  CREATE TABLE status_component (
+    page_id TEXT NOT NULL,
+    monitor_id TEXT NOT NULL,
+    group_name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (page_id, monitor_id)
+  ) WITHOUT ROWID;
+  CREATE TABLE incident_update (
+    id TEXT PRIMARY KEY,
+    incident_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    body TEXT NOT NULL,
+    visibility TEXT NOT NULL,
+    author TEXT,
+    created_at INTEGER NOT NULL
+  ) WITHOUT ROWID;
+  CREATE INDEX incident_update_incident ON incident_update (incident_id, created_at);
+  CREATE TABLE rollup_daily (
+    monitor_id TEXT NOT NULL,
+    day INTEGER NOT NULL,
+    checks INTEGER NOT NULL,
+    ok INTEGER NOT NULL,
+    PRIMARY KEY (monitor_id, day)
+  ) WITHOUT ROWID;
+  INSERT INTO rollup_daily (monitor_id, day, checks, ok)
+    SELECT monitor_id, (hour / 86400000) * 86400000, sum(checks), sum(ok) FROM rollup GROUP BY monitor_id, (hour / 86400000);
+  `,
 ];

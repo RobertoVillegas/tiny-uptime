@@ -91,7 +91,9 @@ export async function deleteMonitor(d: WorkspaceDeps, id: string): Promise<Resul
     yield* getMonitor(d, id);
     d.monitors.delete(id);
     d.history.deleteForMonitor(id);
+    d.incidentUpdates.deleteForIncidentsOf(id);
     d.incidents.deleteForMonitor(id);
+    d.statusPages.dropMonitor(id);
     await d.scheduler.sync();
     return Result.ok(undefined);
   });

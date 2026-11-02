@@ -3,6 +3,7 @@ import type { ApiKey } from "../domain/api-key";
 import type { Channel, Delivery } from "../domain/channel";
 import type { AlertEvent, AlertPolicy, Incident } from "../domain/incident";
 import type { MaintenanceWindow } from "../domain/maintenance";
+import type { IncidentUpdate, StatusComponent, StatusPage } from "../domain/status-page";
 import type { CheckOutcome } from "../domain/monitor/health";
 import type { Monitor, MonitorSpec } from "../domain/monitor/monitor";
 import type { DeliveryFailed } from "../errors";
@@ -50,6 +51,8 @@ export interface HistoryRepository {
   record(monitorId: string, at: number, sample: { ok: boolean; latencyMs: number | null }): void;
   hourly(monitorId: string, since: number): HourlyPoint[];
   publicHourly(since: number): (HourlyPoint & { monitorId: string })[];
+  /** Checks and passes per day (UTC) since `since`, for the given monitors. */
+  daily(monitorIds: string[], since: number): { monitorId: string; day: number; checks: number; ok: number }[];
   deleteForMonitor(monitorId: string): void;
   purgeBefore(cutoff: number): void;
 }
@@ -77,6 +80,25 @@ export interface ApiKeyRepository {
   delete(id: string): boolean;
   byHash(hash: string): ApiKey | null;
   touch(id: string, at: number): void;
+}
+
+export interface StatusPageRepository {
+  list(): StatusPage[];
+  get(id: string): StatusPage | null;
+  bySlug(slug: string): StatusPage | null;
+  insert(page: StatusPage): void;
+  save(page: StatusPage): void;
+  delete(id: string): void;
+  components(pageId: string): StatusComponent[];
+  setComponents(pageId: string, components: StatusComponent[]): void;
+  /** Removes a deleted monitor from every page. */
+  dropMonitor(monitorId: string): void;
+}
+
+export interface IncidentUpdateRepository {
+  insert(update: IncidentUpdate): void;
+  forIncidents(incidentIds: string[], publicOnly: boolean): IncidentUpdate[];
+  deleteForIncidentsOf(monitorId: string): void;
 }
 
 export interface MaintenanceRepository {

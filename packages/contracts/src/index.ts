@@ -8,3 +8,4 @@ export * from "./incident";
 export * from "./maintenance";
 export * from "./monitor";
 export * from "./status";
+export * from "./status-page";

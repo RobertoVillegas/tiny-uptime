@@ -1,25 +1,79 @@
-import { SLUG } from "@tiny-uptime/contracts";
+import { SLUG, type PublicStatusPage } from "@tiny-uptime/contracts";
+import { renderStatusFeed } from "../../html/status-feed";
 import { renderStatusPage } from "../../html/status-page";
 import { workspaceStub } from "../principal";
 import { failWith, json } from "../respond";
 import type { Ctx, Router } from "../router";
 
-const HEARTBEAT_TOKEN = /^([a-z2-7]{12})_[0-9a-f]{32}$/;
-/** Slug → workspace id, kept for the life of the isolate so status pages skip the directory. */
-const slugs = new Map<string, string>();
+/** Where a public slug or hostname leads: a workspace, and one of its status pages (or its legacy page). */
+export type PublicTarget = { workspaceId: string; pageId: string | null };
 
-/** What anyone can reach: status pages, their JSON, and heartbeat pings. */
+const HEARTBEAT_TOKEN = /^([a-z2-7]{12})_[0-9a-f]{32}$/;
+/** Addresses resolved this isolate's lifetime, so busy pages skip the directory. */
+const addresses = new Map<string, { target: PublicTarget | null; until: number }>();
+const ADDRESS_CACHE_MS = 60_000;
+const PUBLIC_CACHE = "public, max-age=30";
+
+/** What anyone can reach: status pages (by slug, or at the root of a custom domain), their JSON and feed, and heartbeats. */
 export function publicRoutes(router: Router): void {
   router
-    .get("/", (c) => statusPage(c, c.env.PUBLIC_SLUG))
-    .get("/s/:slug", (c) => statusPage(c, c.params.slug))
-    .get("/api/public/:slug", async (c) => {
-      const status = await publicStatus(c, c.params.slug);
-      if (!status) return failWith(404, "not_found", "status page not found");
-      return json(200, status, { "cache-control": "public, max-age=30", "access-control-allow-origin": "*" });
+    .get("/", async (c) => {
+      const byHost = await resolve(c, `host:${c.url.hostname}`, (d) => d.resolveHost(c.url.hostname));
+      if (byHost) return page(c, byHost, "html");
+      const slug = c.env.PUBLIC_SLUG;
+      const bySlug = slug ? await resolveSlug(c, slug) : null;
+      return bySlug ? page(c, bySlug, "html") : failWith(404, "not_found", "status page not found");
     })
+    .get("/s/:slug", async (c) => page(c, await resolveSlug(c, c.params.slug!), "html"))
+    .get("/s/:slug/rss", async (c) => page(c, await resolveSlug(c, c.params.slug!), "rss"))
+    .get("/api/public/:slug", async (c) => page(c, await resolveSlug(c, c.params.slug!), "json"))
     .get("/api/heartbeat/:token", heartbeat)
     .post("/api/heartbeat/:token", heartbeat);
+}
+
+async function page(c: Ctx, target: PublicTarget | null, format: "html" | "json" | "rss"): Promise<Response> {
+  const status: PublicStatusPage | null = target ? await workspaceStub(c, target.workspaceId).publicPage(target.pageId) : null;
+  if (!status) return failWith(404, "not_found", "status page not found");
+  if (format === "json") return json(200, status, { "cache-control": PUBLIC_CACHE, "access-control-allow-origin": "*" });
+  if (format === "rss") {
+    const link = `${c.url.origin}${c.url.pathname.replace(/\/rss$/, "")}`;
+    return new Response(renderStatusFeed(status, link), {
+      headers: { "content-type": "application/rss+xml; charset=utf-8", "cache-control": PUBLIC_CACHE },
+    });
+  }
+  const feedPath = c.url.pathname === "/" ? null : `${c.url.pathname}/rss`;
+  return new Response(renderStatusPage(status, { feedPath }), {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": PUBLIC_CACHE,
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
+function resolveSlug(c: Ctx, slug: string): Promise<PublicTarget | null> {
+  if (!SLUG.test(slug)) return Promise.resolve(null);
+  return resolve(c, `slug:${slug}`, (d) => d.resolve(slug));
+}
+
+async function resolve(
+  c: Ctx,
+  key: string,
+  lookup: (directory: ReturnType<typeof directoryOf>) => Promise<PublicTarget | null>,
+): Promise<PublicTarget | null> {
+  const now = Date.now();
+  const cached = addresses.get(key);
+  if (cached && cached.until > now) return cached.target;
+  const target = await lookup(directoryOf(c));
+  if (addresses.size > 5000) addresses.clear();
+  addresses.set(key, { target, until: now + ADDRESS_CACHE_MS });
+  return target;
+}
+
+function directoryOf(c: Ctx) {
+  return c.env.DIRECTORY.get(c.env.DIRECTORY.idFromName("directory"));
 }
 
 async function heartbeat(c: Ctx): Promise<Response> {
@@ -27,23 +81,4 @@ async function heartbeat(c: Ctx): Promise<Response> {
   const match = HEARTBEAT_TOKEN.exec(token);
   const known = match ? await workspaceStub(c, match[1]!).heartbeat(token) : false;
   return known ? json(200, { ok: true }) : failWith(404, "not_found", "unknown heartbeat");
-}
-
-async function statusPage(c: Ctx, slug: string | undefined): Promise<Response> {
-  const status = slug ? await publicStatus(c, slug) : null;
-  if (!status) return failWith(404, "not_found", "status page not found");
-  return new Response(renderStatusPage(status.name, status.monitors, Date.now()), {
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=30" },
-  });
-}
-
-async function publicStatus(c: Ctx, slug: string | undefined) {
-  if (!slug || !SLUG.test(slug)) return null;
-  let id = slugs.get(slug);
-  if (!id) {
-    id = (await c.env.DIRECTORY.get(c.env.DIRECTORY.idFromName("directory")).resolve(slug)) ?? undefined;
-    if (!id) return null;
-    slugs.set(slug, id);
-  }
-  return workspaceStub(c, id).publicStatus();
 }
