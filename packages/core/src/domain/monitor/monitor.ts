@@ -6,13 +6,26 @@ export type HttpTarget = Pick<
 >;
 export type SocketTarget = { host: string; port: number; timeoutMs: number };
 export type HeartbeatRule = { graceSec: number };
+type ConfigOf<T extends MonitorType, K extends keyof Extract<MonitorInput, { type: T }>> = Pick<Extract<MonitorInput, { type: T }>, K>;
+export type DnsTarget = ConfigOf<"dns", "host" | "recordType" | "expected" | "timeoutMs">;
+export type WebSocketTarget = ConfigOf<"websocket", "url" | "headers" | "message" | "timeoutMs">;
+export type DomainTarget = ConfigOf<"domain", "domain" | "warnDays" | "timeoutMs">;
+/** A JSON-RPC endpoint over HTTP: MCP servers and blockchain nodes. */
+export type RpcTarget = ConfigOf<"mcp", "url" | "headers" | "timeoutMs">;
+export type EvmTarget = RpcTarget & ConfigOf<"evm", "chainId">;
 
 /** What to check and how, by monitor type. */
 export type MonitorSpec =
   | { type: "http"; config: HttpTarget }
   | { type: "tcp"; config: SocketTarget }
   | { type: "minecraft"; config: SocketTarget }
-  | { type: "heartbeat"; config: HeartbeatRule };
+  | { type: "heartbeat"; config: HeartbeatRule }
+  | { type: "dns"; config: DnsTarget }
+  | { type: "postgres" | "mysql" | "redis"; config: SocketTarget }
+  | { type: "websocket"; config: WebSocketTarget }
+  | { type: "domain"; config: DomainTarget }
+  | { type: "mcp" | "solana"; config: RpcTarget }
+  | { type: "evm"; config: EvmTarget };
 
 /** How a monitor judges its checks and whom it alerts, the same for every type. */
 export type MonitorOptions = {
@@ -105,9 +118,21 @@ export function targetOf(spec: MonitorSpec): string {
       return spec.config.url;
     case "tcp":
     case "minecraft":
+    case "postgres":
+    case "mysql":
+    case "redis":
       return `${spec.config.host}:${spec.config.port}`;
     case "heartbeat":
       return "";
+    case "dns":
+      return `${spec.config.recordType} ${spec.config.host}`;
+    case "domain":
+      return spec.config.domain;
+    case "websocket":
+    case "mcp":
+    case "evm":
+    case "solana":
+      return spec.config.url;
   }
 }
 
