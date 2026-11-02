@@ -54,7 +54,7 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 - Incidents open and resolve with the monitor's status; alerts go to Slack, Discord, Microsoft Teams (Workflow webhook), ntfy, Lark / Feishu, Telegram, PagerDuty (Events API v2), email, or a webhook in OpenUptime's JSON format, with retries. The API never returns a channel's secrets: it shows the host and a masked target, and a patch that does not resend a secret keeps it. Channel URLs must be http(s) and cannot point at private, loopback or internal hosts.
 - Email alerts need Cloudflare Email Service: add a `send_email` binding named `EMAIL` and an `EMAIL_FROM` var with a verified sender to `wrangler.jsonc`. Without them, email deliveries fail with that explanation.
 - Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
-- Public status page per workspace at `/s/<slug>` (and `/` for `PUBLIC_SLUG`), JSON at `/api/public/<slug>`. Only monitors marked `public` appear.
+- Public status pages at `/s/<slug>`, JSON at `/api/public/<slug>`, built in the panel from chosen monitors in groups. `/` serves the page (or workspace) named by `PUBLIC_SLUG`, or the page whose custom domain the request came in on. A workspace's slug still serves its basic page of monitors marked `public`.
 
 - Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, alert channels of every type with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
