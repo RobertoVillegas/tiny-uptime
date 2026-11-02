@@ -58,7 +58,13 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 
 - Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, alert channels of every type with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
-Next: an MCP server, import from OpenUptime, multi-region checks. The goal is feature parity with OpenUptime.
+- MCP server at `/api/mcp` (Streamable HTTP, stateless JSON): tools to read and change monitors, incidents, maintenance windows, channels and status pages, authenticated with an API key like the REST API:
+
+  ```sh
+  claude mcp add --transport http tiny-uptime https://<host>/api/mcp --header "Authorization: Bearer tu_…"
+  ```
+
+Next: OAuth sign-in for MCP clients, import from OpenUptime, multi-region checks. The goal is feature parity with OpenUptime.
 
 ## Run
 

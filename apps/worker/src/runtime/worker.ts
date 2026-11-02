@@ -7,6 +7,7 @@ import { signInRoutes } from "../adapters/http/routes/auth-sign-in";
 import { channelRoutes } from "../adapters/http/routes/channels";
 import { incidentRoutes } from "../adapters/http/routes/incidents";
 import { maintenanceRoutes } from "../adapters/http/routes/maintenance";
+import { mcpRoutes } from "../adapters/http/routes/mcp";
 import { monitorRoutes } from "../adapters/http/routes/monitors";
 import { panelRoutes } from "../adapters/http/routes/panel";
 import { publicRoutes } from "../adapters/http/routes/public";
@@ -28,6 +29,7 @@ for (const register of [
   statusPageRoutes,
   channelRoutes,
   apiKeyRoutes,
+  mcpRoutes,
   signInRoutes,
   accountRoutes,
 ]) {
