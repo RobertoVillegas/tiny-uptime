@@ -28,7 +28,10 @@ export async function resolveCall(ctx: Ctx): Promise<Result<WorkspaceCall, Respo
   const requested = ctx.request.headers.get("x-workspace-id") ?? "";
   const membership = session.info.memberships.find((m) => m.workspaceId === requested);
   if (!membership) return Result.err(failWith(404, "not_found", "workspace not found"));
-  return Result.ok({ workspaceId: membership.workspaceId, principal: { kind: "member", userId: session.info.userId, role: membership.role } });
+  return Result.ok({
+    workspaceId: membership.workspaceId,
+    principal: { kind: "member", userId: session.info.userId, role: membership.role },
+  });
 }
 
 export function workspaceStub(ctx: Ctx, id: string) {

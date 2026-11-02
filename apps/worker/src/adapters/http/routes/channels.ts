@@ -7,7 +7,10 @@ import { workspaceRoute } from "./workspace-route";
 
 export function channelRoutes(router: Router): void {
   router
-    .get("/api/v1/channels", workspaceRoute(async (c) => reply(await c.workspace.listChannels(c.principal), (list) => list.map(presentChannel))))
+    .get(
+      "/api/v1/channels",
+      workspaceRoute(async (c) => reply(await c.workspace.listChannels(c.principal), (list) => list.map(presentChannel))),
+    )
     .post(
       "/api/v1/channels",
       workspaceRoute(async (c) => {
@@ -24,7 +27,10 @@ export function channelRoutes(router: Router): void {
         return reply(await c.workspace.updateChannel(c.principal, c.params.id!, patch.value), presentChannel);
       }),
     )
-    .delete("/api/v1/channels/:id", workspaceRoute(async (c) => reply(await c.workspace.deleteChannel(c.principal, c.params.id!), undefined, 204)))
+    .delete(
+      "/api/v1/channels/:id",
+      workspaceRoute(async (c) => reply(await c.workspace.deleteChannel(c.principal, c.params.id!), undefined, 204)),
+    )
     .post(
       "/api/v1/channels/:id/test",
       workspaceRoute(async (c) => reply(await c.workspace.testChannel(c.principal, c.params.id!), () => ({ delivered: true }))),

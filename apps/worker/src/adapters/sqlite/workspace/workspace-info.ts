@@ -57,7 +57,15 @@ export class SqliteApiKeys implements ApiKeyRepository {
   }
 
   insert(k: ApiKey): void {
-    this.sql.exec("INSERT INTO api_key (id, name, hash, hint, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?)", k.id, k.name, k.hash, k.hint, k.createdAt, k.lastUsedAt);
+    this.sql.exec(
+      "INSERT INTO api_key (id, name, hash, hint, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?)",
+      k.id,
+      k.name,
+      k.hash,
+      k.hint,
+      k.createdAt,
+      k.lastUsedAt,
+    );
   }
 
   delete(id: string): boolean {

@@ -77,8 +77,24 @@ export class SqliteMonitors implements MonitorRepository {
 function values(m: Monitor): SqlStorageValue[] {
   const s = m.state;
   return [
-    m.id, m.name, m.type, JSON.stringify(m.config), m.intervalSec, m.paused ? 1 : 0, m.public ? 1 : 0, m.heartbeatToken, s.status,
-    s.failures, s.openIncidentId, s.nextCheckAt, s.lastCheckedAt, s.lastLatencyMs, s.lastDetail, s.statusChangedAt, m.createdAt, m.updatedAt,
+    m.id,
+    m.name,
+    m.type,
+    JSON.stringify(m.config),
+    m.intervalSec,
+    m.paused ? 1 : 0,
+    m.public ? 1 : 0,
+    m.heartbeatToken,
+    s.status,
+    s.failures,
+    s.openIncidentId,
+    s.nextCheckAt,
+    s.lastCheckedAt,
+    s.lastLatencyMs,
+    s.lastDetail,
+    s.statusChangedAt,
+    m.createdAt,
+    m.updatedAt,
   ];
 }
 

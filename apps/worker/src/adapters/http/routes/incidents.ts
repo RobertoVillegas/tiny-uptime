@@ -13,5 +13,8 @@ export function incidentRoutes(router: Router): void {
       return reply(await c.workspace.listIncidents(c.principal, query), (list) => list.map(presentIncident));
     }),
   );
-  router.get("/api/v1/workspace", workspaceRoute(async (c) => reply(await c.workspace.info(c.principal))));
+  router.get(
+    "/api/v1/workspace",
+    workspaceRoute(async (c) => reply(await c.workspace.info(c.principal))),
+  );
 }

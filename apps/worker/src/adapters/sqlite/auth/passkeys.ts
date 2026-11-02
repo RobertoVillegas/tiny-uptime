@@ -28,7 +28,15 @@ export class SqlitePasskeys implements PasskeyRepository {
   insert(p: StoredPasskey): void {
     this.sql.exec(
       "INSERT INTO passkey (id, user_id, public_key, algorithm, transports, counter, name, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      p.id, p.userId, p.publicKey, p.algorithm, JSON.stringify(p.transports), p.counter, p.name, p.createdAt, p.lastUsedAt,
+      p.id,
+      p.userId,
+      p.publicKey,
+      p.algorithm,
+      JSON.stringify(p.transports),
+      p.counter,
+      p.name,
+      p.createdAt,
+      p.lastUsedAt,
     );
   }
 

@@ -1,6 +1,9 @@
 import type { MonitorInput, MonitorStatus, MonitorType } from "@tiny-uptime/contracts";
 
-export type HttpTarget = Pick<Extract<MonitorInput, { type: "http" }>, "url" | "method" | "headers" | "body" | "expectedStatus" | "keyword" | "timeoutMs">;
+export type HttpTarget = Pick<
+  Extract<MonitorInput, { type: "http" }>,
+  "url" | "method" | "headers" | "body" | "expectedStatus" | "keyword" | "timeoutMs"
+>;
 export type SocketTarget = { host: string; port: number; timeoutMs: number };
 export type HeartbeatRule = { graceSec: number };
 

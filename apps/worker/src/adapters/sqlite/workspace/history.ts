@@ -12,12 +12,19 @@ export class SqliteHistory implements HistoryRepository {
       `INSERT INTO rollup (monitor_id, hour, checks, ok, ms_sum, ms_count) VALUES (?, ?, 1, ?, ?, ?)
        ON CONFLICT (monitor_id, hour) DO UPDATE SET checks = checks + 1, ok = ok + excluded.ok,
          ms_sum = ms_sum + excluded.ms_sum, ms_count = ms_count + excluded.ms_count`,
-      monitorId, Math.floor(at / HOUR) * HOUR, sample.ok ? 1 : 0, sample.latencyMs ?? 0, sample.latencyMs === null ? 0 : 1,
+      monitorId,
+      Math.floor(at / HOUR) * HOUR,
+      sample.ok ? 1 : 0,
+      sample.latencyMs ?? 0,
+      sample.latencyMs === null ? 0 : 1,
     );
   }
 
   hourly(monitorId: string, since: number): HourlyPoint[] {
-    return this.sql.exec<Row>("SELECT * FROM rollup WHERE monitor_id = ? AND hour >= ? ORDER BY hour", monitorId, since).toArray().map(toPoint);
+    return this.sql
+      .exec<Row>("SELECT * FROM rollup WHERE monitor_id = ? AND hour >= ? ORDER BY hour", monitorId, since)
+      .toArray()
+      .map(toPoint);
   }
 
   publicHourly(since: number): (HourlyPoint & { monitorId: string })[] {

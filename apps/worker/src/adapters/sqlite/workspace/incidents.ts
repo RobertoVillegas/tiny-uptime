@@ -7,7 +7,14 @@ export class SqliteIncidents implements IncidentRepository {
   constructor(private readonly sql: SqlStorage) {}
 
   insert(i: Incident): void {
-    this.sql.exec("INSERT INTO incident (id, monitor_id, started_at, resolved_at, cause) VALUES (?, ?, ?, ?, ?)", i.id, i.monitorId, i.startedAt, i.resolvedAt, i.cause);
+    this.sql.exec(
+      "INSERT INTO incident (id, monitor_id, started_at, resolved_at, cause) VALUES (?, ?, ?, ?, ?)",
+      i.id,
+      i.monitorId,
+      i.startedAt,
+      i.resolvedAt,
+      i.cause,
+    );
   }
 
   get(id: string): Incident | null {

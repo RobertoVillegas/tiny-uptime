@@ -19,16 +19,18 @@ apps/worker          the Cloudflare side
 
 Dependencies point inward: `domain` imports nothing, `application` imports `domain` and `ports`, and only `apps/worker` knows about Cloudflare. Use cases return `Result` values from [better-result](https://github.com/dmmulroy/better-result) with tagged errors; `apps/worker/src/adapters/http/respond.ts` is the one place an error becomes an HTTP status. Input is validated with Valibot schemas from `contracts`.
 
+`pnpm check:boundaries` enforces these rules on every import, along with declared dependencies, so a layer cannot quietly reach into another.
+
 Tests follow the layers: `packages/core/test` checks the domain rules in plain Node, and `apps/worker/test` drives the real Worker and Durable Objects through HTTP, including passkey sign-in with a software authenticator.
 
 ## Budget
 
 These are enforced by `pnpm budget` in CI:
 
-| | Budget | Now |
-| --- | --- | --- |
-| Worker bundle (gzip, minified) | 100 KiB | 40 KiB |
-| Startup CPU (local profile, median of 3) | 10 ms | ~5 ms |
+|                                          | Budget  | Now    |
+| ---------------------------------------- | ------- | ------ |
+| Worker bundle (gzip, minified)           | 100 KiB | 40 KiB |
+| Startup CPU (local profile, median of 3) | 10 ms   | ~5 ms  |
 
 Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per status page, 2–4 ms per round of checks.
 
@@ -46,12 +48,13 @@ Next: the private panel, an MCP server, more monitor types and channels, 90-day 
 
 ## Run
 
+Tool versions are pinned in `mise.toml` (Node, pnpm). Tasks run through Turborepo; TypeScript 7 checks types, oxlint and oxfmt lint and format.
+
 ```bash
 pnpm install
 echo 'ADMIN_TOKEN=local-dev-token' > apps/worker/.dev.vars
 pnpm dev
-pnpm test
-pnpm budget
+pnpm verify      # format, lint, boundaries, typecheck, tests and budget, as CI runs them
 ```
 
 Deploy with `pnpm deploy`, then set the operator token with `pnpm --filter @tiny-uptime/worker exec wrangler secret put ADMIN_TOKEN`.
@@ -77,11 +80,11 @@ Heartbeat monitors return a `heartbeatUrl`; send a GET or POST to it.
 
 ## Free plan budget
 
-| Limit (per day) | Free plan | Expected with ~16 monitors |
-| --- | --- | --- |
-| Worker requests (shared by the account) | 100,000 | heartbeats, API calls and page views |
-| Durable Object requests (alarms included) | 100,000 | ~7,000–10,000 |
-| SQLite rows written | 100,000 | ~15,000–30,000 |
-| Durable Object duration | 13,000 GB-s | under 11,000 even if never idle |
+| Limit (per day)                           | Free plan   | Expected with ~16 monitors           |
+| ----------------------------------------- | ----------- | ------------------------------------ |
+| Worker requests (shared by the account)   | 100,000     | heartbeats, API calls and page views |
+| Durable Object requests (alarms included) | 100,000     | ~7,000–10,000                        |
+| SQLite rows written                       | 100,000     | ~15,000–30,000                       |
+| Durable Object duration                   | 13,000 GB-s | under 11,000 even if never idle      |
 
 Writes past the free limit fail instead of being billed, so a check writes two rows (the monitor and its hourly rollup) and an API key's last use is written at most once an hour.

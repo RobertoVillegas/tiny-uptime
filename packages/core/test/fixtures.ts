@@ -13,7 +13,17 @@ export function httpMonitor(overrides: Partial<Monitor> = {}, state: Partial<Mon
     createdAt: 0,
     updatedAt: 0,
     ...overrides,
-    state: { status: "up", failures: 0, openIncidentId: null, nextCheckAt: 0, lastCheckedAt: null, lastLatencyMs: null, lastDetail: null, statusChangedAt: 0, ...state },
+    state: {
+      status: "up",
+      failures: 0,
+      openIncidentId: null,
+      nextCheckAt: 0,
+      lastCheckedAt: null,
+      lastLatencyMs: null,
+      lastDetail: null,
+      statusChangedAt: 0,
+      ...state,
+    },
   } as Monitor;
 }
 

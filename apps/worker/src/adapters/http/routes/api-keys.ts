@@ -7,7 +7,10 @@ import { workspaceRoute } from "./workspace-route";
 
 export function apiKeyRoutes(router: Router): void {
   router
-    .get("/api/v1/api-keys", workspaceRoute(async (c) => reply(await c.workspace.listApiKeys(c.principal), (list) => list.map(presentApiKey))))
+    .get(
+      "/api/v1/api-keys",
+      workspaceRoute(async (c) => reply(await c.workspace.listApiKeys(c.principal), (list) => list.map(presentApiKey))),
+    )
     .post(
       "/api/v1/api-keys",
       workspaceRoute(async (c) => {
@@ -17,5 +20,8 @@ export function apiKeyRoutes(router: Router): void {
         return reply(created, ({ apiKey, key }): CreatedApiKey => ({ ...presentApiKey(apiKey), key }), 201);
       }),
     )
-    .delete("/api/v1/api-keys/:id", workspaceRoute(async (c) => reply(await c.workspace.deleteApiKey(c.principal, c.params.id!), undefined, 204)));
+    .delete(
+      "/api/v1/api-keys/:id",
+      workspaceRoute(async (c) => reply(await c.workspace.deleteApiKey(c.principal, c.params.id!), undefined, 204)),
+    );
 }

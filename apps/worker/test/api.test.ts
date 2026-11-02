@@ -192,7 +192,9 @@ describe("monitors", () => {
     await call("POST", "/api/v1/monitors", { key, body: { type: "http", name: "Down", url: "https://down.test/" } });
     await tick(ws.id);
     await tick(ws.id);
-    const pending = await runInDurableObject(stub(ws.id), (_: Workspace, state) => state.storage.sql.exec("SELECT attempts FROM delivery").toArray());
+    const pending = await runInDurableObject(stub(ws.id), (_: Workspace, state) =>
+      state.storage.sql.exec("SELECT attempts FROM delivery").toArray(),
+    );
     expect(pending).toEqual([{ attempts: 1 }]);
     failHook = false;
     await tick(ws.id);
@@ -234,7 +236,10 @@ describe("heartbeats", () => {
   it("marks a heartbeat up on ping and down after interval plus grace", async () => {
     const ws = await newWorkspace();
     const key = ws.apiKey;
-    const created = await call("POST", "/api/v1/monitors", { key, body: { type: "heartbeat", name: "Cron", intervalSec: 60, graceSec: 30 } });
+    const created = await call("POST", "/api/v1/monitors", {
+      key,
+      body: { type: "heartbeat", name: "Cron", intervalSec: 60, graceSec: 30 },
+    });
     const url: string = created.body.heartbeatUrl;
     expect(url).toMatch(new RegExp(`^${BASE}/api/heartbeat/${ws.id}_[0-9a-f]{32}$`));
     const path = url.slice(BASE.length);

@@ -39,7 +39,10 @@ export function signInRoutes(router: Router): void {
         return reply(await c.store.acceptInvite(input.value.token, c.session.info.userId));
       }),
     )
-    .post("/auth/login/options", authRoute(async (c) => json(200, await c.store.startSignIn(c.url.origin))))
+    .post(
+      "/auth/login/options",
+      authRoute(async (c) => json(200, await c.store.startSignIn(c.url.origin))),
+    )
     .post(
       "/auth/login/complete",
       authRoute(async (c) => {

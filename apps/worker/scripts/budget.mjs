@@ -26,7 +26,7 @@ try {
     if (Number.isNaN(ms)) throw new Error("could not read the startup profile:\n" + profile);
     return ms;
   });
-  const active = runs.sort((a, b) => a - b)[1];
+  const active = runs.toSorted((a, b) => a - b)[1];
 
   const rows = [
     ["bundle (gzip)", `${gzipKiB.toFixed(1)} KiB`, `${BUDGET.gzipKiB} KiB`, gzipKiB <= BUDGET.gzipKiB],

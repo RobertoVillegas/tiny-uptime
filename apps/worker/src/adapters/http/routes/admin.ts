@@ -9,7 +9,10 @@ import { authStore, isOperator } from "../session";
 /** The instance operator, holding ADMIN_TOKEN: creates workspaces and invites their first owner. */
 export function adminRoutes(router: Router): void {
   router
-    .get("/api/admin/workspaces", operator(async (c) => json(200, await directory(c).list())))
+    .get(
+      "/api/admin/workspaces",
+      operator(async (c) => json(200, await directory(c).list())),
+    )
     .post(
       "/api/admin/workspaces",
       operator(async (c) => {

@@ -8,10 +8,14 @@ import { errorText } from "../checks/timeout";
  * /hook/openuptime among them) keep working unchanged.
  */
 export function toOpenUptimePayload(event: AlertEvent) {
-  const iso = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
   return {
     kind: event.kind === "opened" ? "incident.opened" : "incident.resolved",
-    incident: { id: event.incident.id, title: event.incident.title, startedAt: iso(event.incident.startedAt), resolvedAt: iso(event.incident.resolvedAt) },
+    incident: {
+      id: event.incident.id,
+      title: event.incident.title,
+      startedAt: iso(event.incident.startedAt),
+      resolvedAt: iso(event.incident.resolvedAt),
+    },
     monitor: event.monitor,
     ...(event.test ? { test: true } : {}),
   };
@@ -35,3 +39,7 @@ export const webhookNotifier: Notifier = {
     }
   },
 };
+
+function iso(ms: number | null): string | null {
+  return ms === null ? null : new Date(ms).toISOString();
+}

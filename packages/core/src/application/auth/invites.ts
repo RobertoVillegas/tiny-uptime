@@ -9,10 +9,19 @@ import { openSession } from "./sessions";
 
 const ALREADY_REGISTERED = "this email already has an account; sign in to accept the invite";
 
-export async function createInvite(d: AuthDeps, invite: { email: string; workspaceId: string; workspaceName: string; role: Role }): Promise<string> {
+export async function createInvite(
+  d: AuthDeps,
+  invite: { email: string; workspaceId: string; workspaceName: string; role: Role },
+): Promise<string> {
   const token = d.ids.secret(24);
   const now = d.clock.now();
-  d.invites.insert({ ...invite, email: invite.email.toLowerCase(), hash: await d.ids.hash(token), expiresAt: now + AUTH_POLICY.inviteTtlMs, createdAt: now });
+  d.invites.insert({
+    ...invite,
+    email: invite.email.toLowerCase(),
+    hash: await d.ids.hash(token),
+    expiresAt: now + AUTH_POLICY.inviteTtlMs,
+    createdAt: now,
+  });
   return token;
 }
 
@@ -26,7 +35,11 @@ export async function inviteInfo(d: AuthDeps, token: string): Promise<Result<Inv
 }
 
 /** First step of signing up: a WebAuthn challenge tied to this invite. */
-export async function startSignUp(d: AuthDeps, token: string, name: string): Promise<Result<StartedChallenge & { user: { name: string; displayName: string } }, NotFound | Conflict>> {
+export async function startSignUp(
+  d: AuthDeps,
+  token: string,
+  name: string,
+): Promise<Result<StartedChallenge & { user: { name: string; displayName: string } }, NotFound | Conflict>> {
   return Result.gen(async function* () {
     const invite = yield* Result.await(findInvite(d, token));
     if (d.users.byEmail(invite.email)) return Result.err(new Conflict({ message: ALREADY_REGISTERED }));
@@ -47,7 +60,17 @@ export async function completeSignUp(
 
     const now = d.clock.now();
     const userId = d.ids.id();
-    d.users.insert({ id: userId, email: invite.email, name: input.name, totpSecret: null, totpPending: null, totpLastStep: null, failures: 0, lockedUntil: null, createdAt: now });
+    d.users.insert({
+      id: userId,
+      email: invite.email,
+      name: input.name,
+      totpSecret: null,
+      totpPending: null,
+      totpLastStep: null,
+      failures: 0,
+      lockedUntil: null,
+      createdAt: now,
+    });
     d.memberships.upsert(userId, { workspaceId: invite.workspaceId, workspaceName: invite.workspaceName, role: invite.role });
     d.passkeys.insert({ ...passkey, userId, name: passkeyLabel(input.label, passkey.authenticatorName), createdAt: now, lastUsedAt: null });
     d.invites.delete(invite.hash);
@@ -61,7 +84,8 @@ export async function acceptInvite(d: AuthDeps, token: string, userId: string): 
   return Result.gen(async function* () {
     const invite = yield* Result.await(findInvite(d, token));
     const user = d.users.get(userId);
-    if (!user || user.email !== invite.email) return Result.err(new Invalid({ field: "token", message: "this invite is for another email" }));
+    if (!user || user.email !== invite.email)
+      return Result.err(new Invalid({ field: "token", message: "this invite is for another email" }));
     const membership: Membership = { workspaceId: invite.workspaceId, workspaceName: invite.workspaceName, role: invite.role };
     d.memberships.upsert(userId, membership);
     d.invites.delete(invite.hash);
@@ -76,5 +100,7 @@ export function passkeyLabel(label: string | undefined, authenticator: string | 
 
 async function findInvite(d: AuthDeps, token: string): Promise<Result<Invite, NotFound>> {
   const invite = d.invites.get(await d.ids.hash(token));
-  return invite && invite.expiresAt > d.clock.now() ? Result.ok(invite) : Result.err(new NotFound({ message: "invite is invalid or expired" }));
+  return invite && invite.expiresAt > d.clock.now()
+    ? Result.ok(invite)
+    : Result.err(new NotFound({ message: "invite is invalid or expired" }));
 }

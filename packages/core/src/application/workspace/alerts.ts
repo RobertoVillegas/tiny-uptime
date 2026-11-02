@@ -9,7 +9,14 @@ export async function dispatchAlert(d: WorkspaceDeps, event: AlertEvent): Promis
       const sent = await d.notifier.send(channel, event);
       if (sent.isOk()) return;
       const now = d.clock.now();
-      d.deliveries.enqueue({ id: d.ids.id(), channelId: channel.id, payload: JSON.stringify(event), attempts: 1, nextAt: nextRetryAt(1, now)!, lastError: sent.error.message });
+      d.deliveries.enqueue({
+        id: d.ids.id(),
+        channelId: channel.id,
+        payload: JSON.stringify(event),
+        attempts: 1,
+        nextAt: nextRetryAt(1, now)!,
+        lastError: sent.error.message,
+      });
     }),
   );
 }

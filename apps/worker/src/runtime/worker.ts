@@ -15,7 +15,16 @@ export { Directory } from "./directory-object";
 export { Workspace } from "./workspace-object";
 
 const router = new Router();
-for (const register of [publicRoutes, adminRoutes, monitorRoutes, incidentRoutes, channelRoutes, apiKeyRoutes, signInRoutes, accountRoutes]) {
+for (const register of [
+  publicRoutes,
+  adminRoutes,
+  monitorRoutes,
+  incidentRoutes,
+  channelRoutes,
+  apiKeyRoutes,
+  signInRoutes,
+  accountRoutes,
+]) {
   register(router);
 }
 

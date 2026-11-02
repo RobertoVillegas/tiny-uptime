@@ -7,7 +7,10 @@ import { failWith } from "./respond";
 const MAX_BODY_BYTES = 64 * 1024;
 
 /** Reads a JSON body, bounded in size, and validates it against a schema. */
-export async function readBody<S extends v.GenericSchema>(request: Request, schema: S): Promise<Result<v.InferOutput<S>, Response | ErrorData>> {
+export async function readBody<S extends v.GenericSchema>(
+  request: Request,
+  schema: S,
+): Promise<Result<v.InferOutput<S>, Response | ErrorData>> {
   const length = Number(request.headers.get("content-length") ?? "0");
   if (length > MAX_BODY_BYTES) return Result.err(failWith(413, "invalid_input", "body too large"));
   const text = await request.text();

@@ -18,7 +18,8 @@ export function createChannel(d: WorkspaceDeps, input: ChannelInput): Channel {
 export function updateChannel(d: WorkspaceDeps, id: string, patch: ChannelPatch): Result<Channel, NotFound | Invalid> {
   return Result.gen(function* () {
     const current = yield* getChannel(d, id);
-    if (patch.type !== undefined && patch.type !== current.type) return Result.err(new Invalid({ field: "type", message: "type: cannot be changed" }));
+    if (patch.type !== undefined && patch.type !== current.type)
+      return Result.err(new Invalid({ field: "type", message: "type: cannot be changed" }));
     const { type: _type, ...changes } = patch;
     const updated: Channel = { ...current, ...definedOnly(changes) };
     d.channels.save(updated);

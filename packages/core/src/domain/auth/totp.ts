@@ -18,8 +18,7 @@ export async function totpAt(secret: Uint8Array<ArrayBuffer>, step: number, digi
   const key = await crypto.subtle.importKey("raw", secret, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, counter));
   const offset = mac[mac.length - 1]! & 0x0f;
-  const binary =
-    ((mac[offset]! & 0x7f) << 24) | (mac[offset + 1]! << 16) | (mac[offset + 2]! << 8) | mac[offset + 3]!;
+  const binary = ((mac[offset]! & 0x7f) << 24) | (mac[offset + 1]! << 16) | (mac[offset + 2]! << 8) | mac[offset + 3]!;
   return String(binary % 10 ** digits).padStart(digits, "0");
 }
 

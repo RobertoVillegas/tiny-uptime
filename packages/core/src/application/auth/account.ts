@@ -12,13 +12,18 @@ export function accountSecurity(d: AuthDeps, userId: string): { totpEnabled: boo
   return {
     totpEnabled: Boolean(user?.totpSecret),
     recoveryCodesLeft: d.recoveryCodes.count(userId),
-    passkeys: d.passkeys.forUser(userId).map((p) => ({ id: p.id, name: p.name, createdAt: iso(p.createdAt), lastUsedAt: p.lastUsedAt === null ? null : iso(p.lastUsedAt) })),
+    passkeys: d.passkeys
+      .forUser(userId)
+      .map((p) => ({ id: p.id, name: p.name, createdAt: iso(p.createdAt), lastUsedAt: p.lastUsedAt === null ? null : iso(p.lastUsedAt) })),
   };
 }
 
 // ---- passkeys ----
 
-export function startAddPasskey(d: AuthDeps, user: { userId: string; email: string; name: string }): StartedChallenge & { user: { id: string; name: string; displayName: string } } {
+export function startAddPasskey(
+  d: AuthDeps,
+  user: { userId: string; email: string; name: string },
+): StartedChallenge & { user: { id: string; name: string; displayName: string } } {
   return { ...startChallenge(d, "add-passkey", user.userId), user: { id: user.userId, name: user.email, displayName: user.name } };
 }
 
@@ -26,14 +31,21 @@ export async function addPasskey(d: AuthDeps, userId: string, input: AddPasskeyI
   return Result.gen(async function* () {
     const challenge = yield* takeChallenge(d, input.challengeId, "add-passkey", userId);
     const passkey = yield* Result.await(d.verifier.verifyRegistration(input.registration, challenge));
-    d.passkeys.insert({ ...passkey, userId, name: passkeyLabel(input.label, passkey.authenticatorName), createdAt: d.clock.now(), lastUsedAt: null });
+    d.passkeys.insert({
+      ...passkey,
+      userId,
+      name: passkeyLabel(input.label, passkey.authenticatorName),
+      createdAt: d.clock.now(),
+      lastUsedAt: null,
+    });
     return Result.ok(undefined);
   });
 }
 
 /** The last passkey cannot be removed: it would lock the user out. */
 export function removePasskey(d: AuthDeps, userId: string, id: string): Result<void, Invalid | NotFound> {
-  if (d.passkeys.forUser(userId).length <= 1) return Result.err(new Invalid({ field: "id", message: "you cannot remove your only passkey" }));
+  if (d.passkeys.forUser(userId).length <= 1)
+    return Result.err(new Invalid({ field: "id", message: "you cannot remove your only passkey" }));
   return d.passkeys.delete(id, userId) ? Result.ok(undefined) : Result.err(new NotFound({ message: "passkey not found" }));
 }
 

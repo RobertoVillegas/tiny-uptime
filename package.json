@@ -2,16 +2,26 @@
   "name": "tiny-uptime",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.16.1",
   "scripts": {
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "budget": "pnpm --filter @tiny-uptime/worker budget",
     "dev": "pnpm --filter @tiny-uptime/worker dev",
-    "deploy": "pnpm --filter @tiny-uptime/worker deploy"
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "oxlint --deny-warnings apps packages scripts",
+    "format": "oxfmt --check .",
+    "format:write": "oxfmt .",
+    "check:boundaries": "node scripts/check-boundaries.ts",
+    "budget": "turbo run budget",
+    "verify": "pnpm format && pnpm lint && pnpm check:boundaries && pnpm typecheck && pnpm test && pnpm budget",
+    "deploy": "pnpm build && pnpm --filter @tiny-uptime/worker deploy"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
+    "oxc-parser": "0.151.0",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
+    "turbo": "2.11.4",
+    "typescript": "7.0.2",
     "vitest": "4.1.12"
-  }
+  },
+  "packageManager": "pnpm@12.16.1"
 }

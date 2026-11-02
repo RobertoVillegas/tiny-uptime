@@ -9,13 +9,27 @@ export class SqliteSessions implements SessionRepository {
 
   get(hash: string): Session | null {
     const row = first(this.sql.exec<SessionRow>("SELECT * FROM session WHERE hash = ?", hash));
-    return row && { hash: row.hash, userId: row.user_id, stage: row.stage, expiresAt: row.expires_at, createdAt: row.created_at, seenAt: row.seen_at };
+    return (
+      row && {
+        hash: row.hash,
+        userId: row.user_id,
+        stage: row.stage,
+        expiresAt: row.expires_at,
+        createdAt: row.created_at,
+        seenAt: row.seen_at,
+      }
+    );
   }
 
   insert(s: Session): void {
     this.sql.exec(
       "INSERT INTO session (hash, user_id, stage, expires_at, created_at, seen_at) VALUES (?, ?, ?, ?, ?, ?)",
-      s.hash, s.userId, s.stage, s.expiresAt, s.createdAt, s.seenAt,
+      s.hash,
+      s.userId,
+      s.stage,
+      s.expiresAt,
+      s.createdAt,
+      s.seenAt,
     );
   }
 
@@ -40,7 +54,14 @@ export class SqliteChallenges implements ChallengeRepository {
   constructor(private readonly sql: SqlStorage) {}
 
   insert(c: Challenge): void {
-    this.sql.exec("INSERT INTO challenge (id, value, purpose, subject, expires_at) VALUES (?, ?, ?, ?, ?)", c.id, c.value, c.purpose, c.subject, c.expiresAt);
+    this.sql.exec(
+      "INSERT INTO challenge (id, value, purpose, subject, expires_at) VALUES (?, ?, ?, ?, ?)",
+      c.id,
+      c.value,
+      c.purpose,
+      c.subject,
+      c.expiresAt,
+    );
   }
 
   take(id: string): Challenge | null {

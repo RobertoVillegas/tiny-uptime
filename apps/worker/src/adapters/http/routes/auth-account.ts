@@ -22,7 +22,10 @@ export function accountRoutes(router: Router): void {
         return json(200, { ok: true });
       }),
     )
-    .post("/auth/passkeys/options", accountRoute(async (c) => json(200, await c.store.startAddPasskey(c.url.origin, c.session.info))))
+    .post(
+      "/auth/passkeys/options",
+      accountRoute(async (c) => json(200, await c.store.startAddPasskey(c.url.origin, c.session.info))),
+    )
     .post(
       "/auth/passkeys",
       accountRoute(async (c) => {
@@ -35,7 +38,10 @@ export function accountRoutes(router: Router): void {
       "/auth/passkeys/:id",
       accountRoute(async (c) => reply(await c.store.removePasskey(c.session.info.userId, c.params.id!), () => ({ ok: true }))),
     )
-    .post("/auth/totp/setup", accountRoute(async (c) => reply(await c.store.startTotp(c.session.info.userId))))
+    .post(
+      "/auth/totp/setup",
+      accountRoute(async (c) => reply(await c.store.startTotp(c.session.info.userId))),
+    )
     .post("/auth/totp/confirm", accountRoute(withCode((c, code) => c.store.confirmTotp(c.session.info.userId, code))))
     .post("/auth/totp/disable", accountRoute(withCode((c, code) => c.store.disableTotp(c.session.info.userId, code))))
     .post(
@@ -50,7 +56,11 @@ export function accountRoutes(router: Router): void {
           const input = await readBody(c.request, InviteMemberInput);
           if (input.isErr()) return rejected(input.error);
           const { email, role } = input.value;
-          return reply(await c.store.inviteMember(actor, email, role), (token) => ({ inviteUrl: `${c.url.origin}/app/invite?token=${token}`, email, role }), 201);
+          return reply(
+            await c.store.inviteMember(actor, email, role),
+            (token) => ({ inviteUrl: `${c.url.origin}/app/invite?token=${token}`, email, role }),
+            201,
+          );
         }),
       ),
     )

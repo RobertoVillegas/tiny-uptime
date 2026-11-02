@@ -12,7 +12,10 @@ export function startSignIn(d: AuthDeps): StartedChallenge {
 }
 
 /** Verifies the passkey; users with TOTP get a session that waits for their code. */
-export async function completeSignIn(d: AuthDeps, input: LoginCompleteInput): Promise<Result<{ session: string; stage: SignInStage }, Invalid | Unauthorized>> {
+export async function completeSignIn(
+  d: AuthDeps,
+  input: LoginCompleteInput,
+): Promise<Result<{ session: string; stage: SignInStage }, Invalid | Unauthorized>> {
   return Result.gen(async function* () {
     const challenge = yield* takeChallenge(d, input.challengeId, "login", null);
     const passkey = d.passkeys.get(input.authentication.id);
@@ -28,7 +31,11 @@ export async function completeSignIn(d: AuthDeps, input: LoginCompleteInput): Pr
 }
 
 /** Finishes a sign-in waiting for its TOTP code. The waiting session is replaced, never upgraded. */
-export async function completeMfa(d: AuthDeps, sessionHash: string, code: string): Promise<Result<{ session: string }, Unauthorized | TooManyAttempts>> {
+export async function completeMfa(
+  d: AuthDeps,
+  sessionHash: string,
+  code: string,
+): Promise<Result<{ session: string }, Unauthorized | TooManyAttempts>> {
   return Result.gen(async function* () {
     const session = d.sessions.get(sessionHash);
     if (!session || session.stage !== "mfa" || session.expiresAt < d.clock.now()) {
@@ -41,7 +48,11 @@ export async function completeMfa(d: AuthDeps, sessionHash: string, code: string
 }
 
 /** A recovery code stands in for both factors once, so someone who lost their passkey can add a new one. */
-export async function recoverAccount(d: AuthDeps, email: string, code: string): Promise<Result<{ session: string }, Unauthorized | TooManyAttempts>> {
+export async function recoverAccount(
+  d: AuthDeps,
+  email: string,
+  code: string,
+): Promise<Result<{ session: string }, Unauthorized | TooManyAttempts>> {
   const user = d.users.byEmail(email.toLowerCase());
   const invalid = new Unauthorized({ message: "invalid email or recovery code" });
   if (!user) return Result.err(invalid);

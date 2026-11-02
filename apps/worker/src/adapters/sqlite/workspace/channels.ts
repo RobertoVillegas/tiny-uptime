@@ -23,12 +23,23 @@ export class SqliteChannels implements ChannelRepository {
   insert(c: Channel): void {
     this.sql.exec(
       "INSERT INTO channel (id, type, name, config, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      c.id, c.type, c.name, JSON.stringify({ url: c.url }), c.enabled ? 1 : 0, c.createdAt,
+      c.id,
+      c.type,
+      c.name,
+      JSON.stringify({ url: c.url }),
+      c.enabled ? 1 : 0,
+      c.createdAt,
     );
   }
 
   save(c: Channel): void {
-    this.sql.exec("UPDATE channel SET name = ?, config = ?, enabled = ? WHERE id = ?", c.name, JSON.stringify({ url: c.url }), c.enabled ? 1 : 0, c.id);
+    this.sql.exec(
+      "UPDATE channel SET name = ?, config = ?, enabled = ? WHERE id = ?",
+      c.name,
+      JSON.stringify({ url: c.url }),
+      c.enabled ? 1 : 0,
+      c.id,
+    );
   }
 
   delete(id: string): void {
@@ -42,7 +53,12 @@ export class SqliteDeliveries implements DeliveryRepository {
   enqueue(d: Delivery): void {
     this.sql.exec(
       "INSERT INTO delivery (id, channel_id, payload, attempts, next_at, last_error) VALUES (?, ?, ?, ?, ?, ?)",
-      d.id, d.channelId, d.payload, d.attempts, d.nextAt, d.lastError,
+      d.id,
+      d.channelId,
+      d.payload,
+      d.attempts,
+      d.nextAt,
+      d.lastError,
     );
   }
 
@@ -64,9 +80,23 @@ export class SqliteDeliveries implements DeliveryRepository {
 }
 
 function toChannel(row: ChannelRow): Channel {
-  return { id: row.id, type: row.type, name: row.name, url: json<{ url: string }>(row.config).url, enabled: bool(row.enabled), createdAt: row.created_at };
+  return {
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    url: json<{ url: string }>(row.config).url,
+    enabled: bool(row.enabled),
+    createdAt: row.created_at,
+  };
 }
 
 function toDelivery(row: DeliveryRow): Delivery {
-  return { id: row.id, channelId: row.channel_id, payload: row.payload, attempts: row.attempts, nextAt: row.next_at, lastError: row.last_error };
+  return {
+    id: row.id,
+    channelId: row.channel_id,
+    payload: row.payload,
+    attempts: row.attempts,
+    nextAt: row.next_at,
+    lastError: row.last_error,
+  };
 }

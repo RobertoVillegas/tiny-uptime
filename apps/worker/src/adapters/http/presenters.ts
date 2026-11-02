@@ -28,7 +28,14 @@ export function presentApiKey(k: ApiKey): ApiKeyDto {
 }
 
 export function presentIncident(i: IncidentListing): IncidentDto {
-  return { id: i.id, monitorId: i.monitorId, monitorName: i.monitorName, startedAt: iso(i.startedAt)!, resolvedAt: iso(i.resolvedAt), cause: i.cause };
+  return {
+    id: i.id,
+    monitorId: i.monitorId,
+    monitorName: i.monitorName,
+    startedAt: iso(i.startedAt)!,
+    resolvedAt: iso(i.resolvedAt),
+    cause: i.cause,
+  };
 }
 
 function iso(ms: number | null): string | null {

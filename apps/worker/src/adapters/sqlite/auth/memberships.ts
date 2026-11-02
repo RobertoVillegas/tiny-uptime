@@ -3,7 +3,15 @@ import type { Membership, Role } from "@tiny-uptime/contracts";
 import { first } from "../rows";
 
 type MembershipRow = { workspace_id: string; workspace_name: string; role: Role };
-type InviteRow = { hash: string; email: string; workspace_id: string; workspace_name: string; role: Role; expires_at: number; created_at: number };
+type InviteRow = {
+  hash: string;
+  email: string;
+  workspace_id: string;
+  workspace_name: string;
+  role: Role;
+  expires_at: number;
+  created_at: number;
+};
 
 export class SqliteMemberships implements MembershipRepository {
   constructor(private readonly sql: SqlStorage) {}
@@ -26,7 +34,13 @@ export class SqliteMemberships implements MembershipRepository {
   }
 
   get(userId: string, workspaceId: string): Membership | null {
-    const row = first(this.sql.exec<MembershipRow>("SELECT workspace_id, workspace_name, role FROM membership WHERE user_id = ? AND workspace_id = ?", userId, workspaceId));
+    const row = first(
+      this.sql.exec<MembershipRow>(
+        "SELECT workspace_id, workspace_name, role FROM membership WHERE user_id = ? AND workspace_id = ?",
+        userId,
+        workspaceId,
+      ),
+    );
     return row && toMembership(row);
   }
 
@@ -34,7 +48,10 @@ export class SqliteMemberships implements MembershipRepository {
     this.sql.exec(
       `INSERT INTO membership (user_id, workspace_id, workspace_name, role) VALUES (?, ?, ?, ?)
        ON CONFLICT (user_id, workspace_id) DO UPDATE SET role = excluded.role, workspace_name = excluded.workspace_name`,
-      userId, m.workspaceId, m.workspaceName, m.role,
+      userId,
+      m.workspaceId,
+      m.workspaceName,
+      m.role,
     );
   }
 
@@ -47,7 +64,9 @@ export class SqliteMemberships implements MembershipRepository {
   }
 
   countOwners(workspaceId: string): number {
-    return first(this.sql.exec<{ n: number }>("SELECT count(*) AS n FROM membership WHERE workspace_id = ? AND role = 'owner'", workspaceId))!.n;
+    return first(
+      this.sql.exec<{ n: number }>("SELECT count(*) AS n FROM membership WHERE workspace_id = ? AND role = 'owner'", workspaceId),
+    )!.n;
   }
 }
 
@@ -57,7 +76,13 @@ export class SqliteInvites implements InviteRepository {
   insert(i: Invite): void {
     this.sql.exec(
       "INSERT INTO invite (hash, email, workspace_id, workspace_name, role, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      i.hash, i.email, i.workspaceId, i.workspaceName, i.role, i.expiresAt, i.createdAt,
+      i.hash,
+      i.email,
+      i.workspaceId,
+      i.workspaceName,
+      i.role,
+      i.expiresAt,
+      i.createdAt,
     );
   }
 
@@ -71,7 +96,10 @@ export class SqliteInvites implements InviteRepository {
   }
 
   pending(workspaceId: string, now: number): Invite[] {
-    return this.sql.exec<InviteRow>("SELECT * FROM invite WHERE workspace_id = ? AND expires_at > ? ORDER BY created_at", workspaceId, now).toArray().map(toInvite);
+    return this.sql
+      .exec<InviteRow>("SELECT * FROM invite WHERE workspace_id = ? AND expires_at > ? ORDER BY created_at", workspaceId, now)
+      .toArray()
+      .map(toInvite);
   }
 }
 
@@ -97,5 +125,13 @@ function toMembership(row: MembershipRow): Membership {
 }
 
 function toInvite(row: InviteRow): Invite {
-  return { hash: row.hash, email: row.email, workspaceId: row.workspace_id, workspaceName: row.workspace_name, role: row.role, expiresAt: row.expires_at, createdAt: row.created_at };
+  return {
+    hash: row.hash,
+    email: row.email,
+    workspaceId: row.workspace_id,
+    workspaceName: row.workspace_name,
+    role: row.role,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  };
 }

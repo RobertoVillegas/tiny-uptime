@@ -15,5 +15,7 @@ export type AppError = Invalid | NotFound | Unauthorized | Forbidden | Conflict 
 export type ErrorData = { _tag: AppError["_tag"]; message: string; field?: string };
 
 export function toErrorData(error: AppError): ErrorData {
-  return Invalid.is(error) ? { _tag: error._tag, message: error.message, field: error.field } : { _tag: error._tag, message: error.message };
+  return Invalid.is(error)
+    ? { _tag: error._tag, message: error.message, field: error.field }
+    : { _tag: error._tag, message: error.message };
 }

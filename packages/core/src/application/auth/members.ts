@@ -12,7 +12,9 @@ export function listMembers(d: AuthDeps, actor: Actor): { members: Member[]; inv
   const workspaceId = actor.membership.workspaceId;
   return {
     members: d.memberships.forWorkspace(workspaceId),
-    invites: d.invites.pending(workspaceId, d.clock.now()).map((i) => ({ email: i.email, role: i.role, expiresAt: new Date(i.expiresAt).toISOString() })),
+    invites: d.invites
+      .pending(workspaceId, d.clock.now())
+      .map((i) => ({ email: i.email, role: i.role, expiresAt: new Date(i.expiresAt).toISOString() })),
   };
 }
 

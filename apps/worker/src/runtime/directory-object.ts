@@ -2,7 +2,6 @@ import { DurableObject } from "cloudflare:workers";
 import type { Env } from "./env";
 import type { WorkspaceEntry } from "@tiny-uptime/contracts";
 
-
 /**
  * The one place that knows every workspace: slugs for public status pages and the list the
  * operator sees. Monitoring traffic never goes through here.

@@ -45,7 +45,8 @@ export async function createMonitor(d: WorkspaceDeps, input: MonitorInput): Prom
 export async function updateMonitor(d: WorkspaceDeps, id: string, patch: MonitorPatch): Promise<Result<Monitor, NotFound | Invalid>> {
   return Result.gen(async function* () {
     const current = yield* getMonitor(d, id);
-    if (patch.type !== undefined && patch.type !== current.type) return Result.err(new Invalid({ field: "type", message: "type: cannot be changed" }));
+    if (patch.type !== undefined && patch.type !== current.type)
+      return Result.err(new Invalid({ field: "type", message: "type: cannot be changed" }));
     const parsed = validate(MonitorInput, { ...toInput(current), ...patch, type: current.type });
     if (!parsed.ok) return Result.err(new Invalid({ field: parsed.field, message: parsed.message }));
 

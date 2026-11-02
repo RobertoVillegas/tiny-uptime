@@ -128,10 +128,13 @@ export class Workspace extends DurableObject<Env> {
     return this.run(p, "manage-api-keys", () => ws.deleteApiKey(this.d, id));
   }
 
-  private async run<T>(principal: Principal, action: Action, useCase: () => Result<T, AppError> | Promise<Result<T, AppError>>): Promise<Wire<T>> {
+  private async run<T>(
+    principal: Principal,
+    action: Action,
+    useCase: () => Result<T, AppError> | Promise<Result<T, AppError>>,
+  ): Promise<Wire<T>> {
     const allowed = ws.authorize(this.d, principal, action);
     if (allowed.isErr()) return { status: "error", error: toErrorData(allowed.error) };
     return toWire(await useCase());
   }
 }
-

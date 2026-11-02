@@ -30,14 +30,29 @@ export class SqliteUsers implements UserRepository {
     this.sql.exec(
       `INSERT INTO user (id, email, name, totp_secret, totp_pending, totp_last_step, failures, locked_until, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      u.id, u.email, u.name, u.totpSecret, u.totpPending, u.totpLastStep, u.failures, u.lockedUntil, u.createdAt,
+      u.id,
+      u.email,
+      u.name,
+      u.totpSecret,
+      u.totpPending,
+      u.totpLastStep,
+      u.failures,
+      u.lockedUntil,
+      u.createdAt,
     );
   }
 
   save(u: User): void {
     this.sql.exec(
       "UPDATE user SET email = ?, name = ?, totp_secret = ?, totp_pending = ?, totp_last_step = ?, failures = ?, locked_until = ? WHERE id = ?",
-      u.email, u.name, u.totpSecret, u.totpPending, u.totpLastStep, u.failures, u.lockedUntil, u.id,
+      u.email,
+      u.name,
+      u.totpSecret,
+      u.totpPending,
+      u.totpLastStep,
+      u.failures,
+      u.lockedUntil,
+      u.id,
     );
   }
 }

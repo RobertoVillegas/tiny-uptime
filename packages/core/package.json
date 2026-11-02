@@ -2,7 +2,15 @@
   "name": "@tiny-uptime/core",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "dependencies": { "@tiny-uptime/contracts": "workspace:*", "better-result": "3.0.1" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tiny-uptime/contracts": "workspace:*",
+    "better-result": "3.0.1"
+  }
 }

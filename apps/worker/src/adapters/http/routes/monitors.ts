@@ -9,7 +9,9 @@ export function monitorRoutes(router: Router): void {
   router
     .get(
       "/api/v1/monitors",
-      workspaceRoute(async (c) => reply(await c.workspace.listMonitors(c.principal), (list) => list.map((m) => presentMonitor(m, c.url.origin)))),
+      workspaceRoute(async (c) =>
+        reply(await c.workspace.listMonitors(c.principal), (list) => list.map((m) => presentMonitor(m, c.url.origin))),
+      ),
     )
     .post(
       "/api/v1/monitors",
@@ -37,6 +39,8 @@ export function monitorRoutes(router: Router): void {
     )
     .get(
       "/api/v1/monitors/:id/stats",
-      workspaceRoute(async (c) => reply(await c.workspace.monitorStats(c.principal, c.params.id!, Number(c.url.searchParams.get("hours") ?? 24)))),
+      workspaceRoute(async (c) =>
+        reply(await c.workspace.monitorStats(c.principal, c.params.id!, Number(c.url.searchParams.get("hours") ?? 24))),
+      ),
     );
 }

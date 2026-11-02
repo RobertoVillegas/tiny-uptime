@@ -30,7 +30,11 @@ export function passkeyVerifier(origin: string): PasskeyVerifier {
       }
     },
 
-    async verifyAuthentication(authentication: unknown, passkey: StoredPasskey, challenge: string): Promise<Result<{ counter: number }, Unauthorized>> {
+    async verifyAuthentication(
+      authentication: unknown,
+      passkey: StoredPasskey,
+      challenge: string,
+    ): Promise<Result<{ counter: number }, Unauthorized>> {
       try {
         const info = await server.verifyAuthentication(
           authentication as AuthenticationJSON,

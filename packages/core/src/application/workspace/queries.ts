@@ -29,7 +29,10 @@ export function monitorStats(d: WorkspaceDeps, id: string, requestedHours: numbe
 }
 
 export function listIncidents(d: WorkspaceDeps, query: { limit?: number; monitorId?: string }): IncidentListing[] {
-  return d.incidents.list({ limit: clamp(query.limit, 1, MAX_INCIDENTS_PAGE, 50), ...(query.monitorId ? { monitorId: query.monitorId } : {}) });
+  return d.incidents.list({
+    limit: clamp(query.limit, 1, MAX_INCIDENTS_PAGE, 50),
+    ...(query.monitorId ? { monitorId: query.monitorId } : {}),
+  });
 }
 
 /** What the public status page shows: monitors marked public and their last 24 hours. */
@@ -47,7 +50,7 @@ export function publicStatus(d: WorkspaceDeps): PublicStatus | null {
       status: m.state.status,
       lastMs: m.state.lastLatencyMs,
       uptime24h: checks ? ok / checks : null,
-      hours: mine.map(({ hour, checks, ok }) => ({ hour, checks, ok })),
+      hours: mine.map((p) => ({ hour: p.hour, checks: p.checks, ok: p.ok })),
     };
   });
   return { name: info.name, monitors };

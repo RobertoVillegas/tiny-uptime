@@ -3,14 +3,7 @@ import * as v from "valibot";
 /** Every error response has this shape; `code` is stable for clients, `error` is for people. */
 export type ApiError = { error: string; code: ErrorCode; field?: string };
 
-export type ErrorCode =
-  | "invalid_input"
-  | "unauthorized"
-  | "forbidden"
-  | "not_found"
-  | "conflict"
-  | "too_many_attempts"
-  | "delivery_failed";
+export type ErrorCode = "invalid_input" | "unauthorized" | "forbidden" | "not_found" | "conflict" | "too_many_attempts" | "delivery_failed";
 
 /** The first issue of a failed validation, as the field it names and a message. */
 export function describeIssues(issues: readonly v.BaseIssue<unknown>[]): { field: string; message: string } {

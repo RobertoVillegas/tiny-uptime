@@ -58,11 +58,17 @@ export interface RecoveryCodeRepository {
   count(userId: string): number;
 }
 
-export type NewPasskey = Pick<StoredPasskey, "id" | "publicKey" | "algorithm" | "transports" | "counter"> & { authenticatorName: string | null };
+export type NewPasskey = Pick<StoredPasskey, "id" | "publicKey" | "algorithm" | "transports" | "counter"> & {
+  authenticatorName: string | null;
+};
 
 /** Checks WebAuthn ceremonies against the expected challenge and this site's origin. */
 export interface PasskeyVerifier {
   newChallenge(): string;
   verifyRegistration(registration: unknown, challenge: string): Promise<Result<NewPasskey, Invalid>>;
-  verifyAuthentication(authentication: unknown, passkey: StoredPasskey, challenge: string): Promise<Result<{ counter: number }, Unauthorized>>;
+  verifyAuthentication(
+    authentication: unknown,
+    passkey: StoredPasskey,
+    challenge: string,
+  ): Promise<Result<{ counter: number }, Unauthorized>>;
 }

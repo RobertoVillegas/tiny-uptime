@@ -25,7 +25,15 @@ export type StoredPasskey = {
 };
 
 export type Session = { hash: string; userId: string; stage: "full" | "mfa"; expiresAt: number; createdAt: number; seenAt: number };
-export type Invite = { hash: string; email: string; workspaceId: string; workspaceName: string; role: Role; expiresAt: number; createdAt: number };
+export type Invite = {
+  hash: string;
+  email: string;
+  workspaceId: string;
+  workspaceName: string;
+  role: Role;
+  expiresAt: number;
+  createdAt: number;
+};
 export type Challenge = { id: string; value: string; purpose: ChallengePurpose; subject: string | null; expiresAt: number };
 export type ChallengePurpose = "sign-up" | "login" | "add-passkey";
 
@@ -51,5 +59,7 @@ export function isLocked(user: User, now: number): boolean {
 /** Counts a failed attempt; returns the user's new failure counter and lock. */
 export function afterFailure(user: User, now: number): Pick<User, "failures" | "lockedUntil"> {
   const failures = user.failures + 1;
-  return failures >= AUTH_POLICY.maxFailures ? { failures: 0, lockedUntil: now + AUTH_POLICY.lockMs } : { failures, lockedUntil: user.lockedUntil };
+  return failures >= AUTH_POLICY.maxFailures
+    ? { failures: 0, lockedUntil: now + AUTH_POLICY.lockMs }
+    : { failures, lockedUntil: user.lockedUntil };
 }

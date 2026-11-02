@@ -39,15 +39,28 @@ const HttpMonitor = v.pipe(
     method: v.optional(v.picklist(HTTP_METHODS), "GET"),
     headers: v.optional(
       v.pipe(
-        v.record(v.pipe(v.string(), v.regex(HEADER_NAME, "is not a valid header name")), v.pipe(v.string(), v.maxLength(1024), v.regex(/^[^\r\n]*$/, "must be one line"))),
+        v.record(
+          v.pipe(v.string(), v.regex(HEADER_NAME, "is not a valid header name")),
+          v.pipe(v.string(), v.maxLength(1024), v.regex(/^[^\r\n]*$/, "must be one line")),
+        ),
         v.check((h) => Object.keys(h).length <= LIMITS.maxHeaders, `must have at most ${LIMITS.maxHeaders} entries`),
       ),
       {},
     ),
-    body: v.optional(v.pipe(v.string(), v.check((b) => new TextEncoder().encode(b).length <= LIMITS.maxBodyBytes, `must be at most ${LIMITS.maxBodyBytes} bytes`))),
+    body: v.optional(
+      v.pipe(
+        v.string(),
+        v.check((b) => new TextEncoder().encode(b).length <= LIMITS.maxBodyBytes, `must be at most ${LIMITS.maxBodyBytes} bytes`),
+      ),
+    ),
     /** Status codes that count as up; empty means any status below 400. */
     expectedStatus: v.optional(v.pipe(v.array(int(100, 599)), v.maxLength(20)), []),
-    keyword: v.optional(v.object({ value: v.pipe(v.string(), v.minLength(1), v.maxLength(200)), mode: v.optional(v.picklist(["contains", "absent"]), "contains") })),
+    keyword: v.optional(
+      v.object({
+        value: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+        mode: v.optional(v.picklist(["contains", "absent"]), "contains"),
+      }),
+    ),
     timeoutMs,
   }),
   v.forward(
