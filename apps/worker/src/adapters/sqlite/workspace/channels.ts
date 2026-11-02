@@ -1,4 +1,4 @@
-import type { Channel, ChannelRepository, Delivery, DeliveryRepository } from "@tiny-uptime/core";
+import { channelSettings, type Channel, type ChannelRepository, type Delivery, type DeliveryRepository } from "@tiny-uptime/core";
 import { bool, first, json } from "../rows";
 
 type ChannelRow = { id: string; type: Channel["type"]; name: string; config: string; enabled: number; created_at: number };
@@ -26,7 +26,7 @@ export class SqliteChannels implements ChannelRepository {
       c.id,
       c.type,
       c.name,
-      JSON.stringify({ url: c.url }),
+      JSON.stringify(channelSettings(c)),
       c.enabled ? 1 : 0,
       c.createdAt,
     );
@@ -36,7 +36,7 @@ export class SqliteChannels implements ChannelRepository {
     this.sql.exec(
       "UPDATE channel SET name = ?, config = ?, enabled = ? WHERE id = ?",
       c.name,
-      JSON.stringify({ url: c.url }),
+      JSON.stringify(channelSettings(c)),
       c.enabled ? 1 : 0,
       c.id,
     );
@@ -79,15 +79,19 @@ export class SqliteDeliveries implements DeliveryRepository {
   }
 }
 
+/**
+ * `config` holds the settings of the channel's type as JSON. Webhook rows written before other types existed hold
+ * `{ "url": … }`, which is exactly a webhook's settings, so they read unchanged.
+ */
 function toChannel(row: ChannelRow): Channel {
   return {
+    ...json<Record<string, unknown>>(row.config),
     id: row.id,
     type: row.type,
     name: row.name,
-    url: json<{ url: string }>(row.config).url,
     enabled: bool(row.enabled),
     createdAt: row.created_at,
-  };
+  } as Channel;
 }
 
 function toDelivery(row: DeliveryRow): Delivery {

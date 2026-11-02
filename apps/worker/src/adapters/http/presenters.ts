@@ -6,6 +6,7 @@ import type {
   Monitor as MonitorDto,
 } from "@tiny-uptime/contracts";
 import {
+  channelTarget,
   isActive,
   isFinished,
   toInput,
@@ -35,7 +36,7 @@ export function presentMonitor(m: Monitor, origin: string): MonitorDto {
 }
 
 export function presentChannel(c: Channel): ChannelDto {
-  return { id: c.id, type: c.type, name: c.name, enabled: c.enabled, host: new URL(c.url).host, createdAt: iso(c.createdAt)! };
+  return { id: c.id, type: c.type, name: c.name, enabled: c.enabled, ...channelTarget(c), createdAt: iso(c.createdAt)! };
 }
 
 export function presentApiKey(k: ApiKey): ApiKeyDto {

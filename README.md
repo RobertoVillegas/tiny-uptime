@@ -16,7 +16,7 @@ packages/core        domain rules and use cases; no Cloudflare APIs
   ports/             interfaces the use cases need: repositories, checker, notifier, clock
 apps/panel           private panel at /app: React 19, TanStack Router, Query and Form, built by Vite
 apps/worker          the Cloudflare side
-  adapters/          SQLite repositories, checks (HTTP, TCP, Minecraft), webhook, passkeys, HTTP routes
+  adapters/          SQLite repositories, checks (HTTP, TCP, Minecraft), alert channels, passkeys, HTTP routes
   runtime/           Worker entry and Durable Objects: wire adapters to use cases, nothing else
 ```
 
@@ -45,13 +45,14 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 - REST API at `/api/v1` (`Authorization: Bearer tu_…` or `x-api-key`): monitors, hourly stats, incidents, alert channels and API keys.
 - Monitors: HTTP (method, headers, body, expected status codes, keyword present or absent), TCP, Minecraft server list ping, heartbeat with a grace period.
 - A monitor is reported down after two failures in a row; a failed check is retried after 20 seconds. Each monitor checks at a fixed offset inside its interval, so monitors spread out instead of firing together.
-- Incidents open and resolve with the monitor's status; alerts go to webhook channels in OpenUptime's webhook format, with retries.
+- Incidents open and resolve with the monitor's status; alerts go to Slack, Discord, Microsoft Teams (Workflow webhook), ntfy, Lark / Feishu, Telegram, PagerDuty (Events API v2), email, or a webhook in OpenUptime's JSON format, with retries. The API never returns a channel's secrets: it shows the host and a masked target, and a patch that does not resend a secret keeps it. Channel URLs must be http(s) and cannot point at private, loopback or internal hosts.
+- Email alerts need Cloudflare Email Service: add a `send_email` binding named `EMAIL` and an `EMAIL_FROM` var with a verified sender to `wrangler.jsonc`. Without them, email deliveries fail with that explanation.
 - Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
 - Public status page per workspace at `/s/<slug>` (and `/` for `PUBLIC_SLUG`), JSON at `/api/public/<slug>`. Only monitors marked `public` appear.
 
-- Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, webhook alerts with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
+- Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, alert channels of every type with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
-Next: an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
+Next: an MCP server, more monitor types, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
 
 ## Run
 
