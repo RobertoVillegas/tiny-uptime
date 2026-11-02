@@ -1,41 +1,91 @@
 import { connect } from "cloudflare:sockets";
 
+import type { HttpConfig, TcpConfig } from "./model";
+
 export type CheckResult = { ok: boolean; ms: number; detail: string };
 
-export async function checkHttp(url: string, timeoutMs: number): Promise<CheckResult> {
+const USER_AGENT = "tiny-uptime/0.1 (+https://github.com/RobertoVillegas/tiny-uptime)";
+/** Keyword checks read at most this much of the body. */
+const MAX_KEYWORD_BYTES = 256 * 1024;
+
+export async function checkHttp(config: HttpConfig): Promise<CheckResult> {
   const started = Date.now();
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(timeoutMs),
-      headers: { "user-agent": "tiny-uptime/0.1" },
+    const res = await fetch(config.url, {
+      method: config.method,
+      headers: { "user-agent": USER_AGENT, ...config.headers },
+      ...(config.body !== undefined ? { body: config.body } : {}),
+      signal: AbortSignal.timeout(config.timeoutMs),
     });
-    await res.body?.cancel();
-    return { ok: res.status < 400, ms: Date.now() - started, detail: `HTTP ${res.status}` };
+    const statusOk = config.expectedStatus.length ? config.expectedStatus.includes(res.status) : res.status < 400;
+    if (!statusOk || !config.keyword) {
+      await res.body?.cancel();
+      return { ok: statusOk, ms: Date.now() - started, detail: `HTTP ${res.status}` };
+    }
+    const text = await readText(res, MAX_KEYWORD_BYTES);
+    const found = text.includes(config.keyword.value);
+    const ok = config.keyword.mode === "contains" ? found : !found;
+    const detail = ok ? `HTTP ${res.status}` : `HTTP ${res.status}, keyword ${found ? "present" : "missing"}`;
+    return { ok, ms: Date.now() - started, detail };
   } catch (error) {
     return { ok: false, ms: Date.now() - started, detail: errorText(error) };
   }
 }
 
-// Server List Ping: handshake (next state = status), status request, read the JSON response.
-export async function checkMinecraft(target: string, timeoutMs: number): Promise<CheckResult> {
+export async function checkTcp(config: TcpConfig): Promise<CheckResult> {
   const started = Date.now();
-  const [host = "", portText = "25565"] = target.split(":");
-  const port = Number(portText);
-  const socket = connect({ hostname: host, port });
-  let timeout: number | undefined;
-  const timer = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => reject(new Error(`timeout after ${timeoutMs} ms`)), timeoutMs);
-  });
+  const socket = connect({ hostname: config.host, port: config.port });
   try {
-    const status = await Promise.race([ping(socket, host, port), timer]);
+    await withTimeout(socket.opened, config.timeoutMs);
+    return { ok: true, ms: Date.now() - started, detail: "connected" };
+  } catch (error) {
+    return { ok: false, ms: Date.now() - started, detail: errorText(error) };
+  } finally {
+    socket.close().catch(() => {});
+  }
+}
+
+// Server List Ping: handshake (next state = status), status request, read the JSON response.
+export async function checkMinecraft(config: TcpConfig): Promise<CheckResult> {
+  const started = Date.now();
+  const socket = connect({ hostname: config.host, port: config.port });
+  try {
+    const status = await withTimeout(ping(socket, config.host, config.port), config.timeoutMs);
     const online = status.players?.online ?? "?";
     return { ok: true, ms: Date.now() - started, detail: `${status.version?.name ?? "unknown"}, ${online} online` };
   } catch (error) {
     return { ok: false, ms: Date.now() - started, detail: errorText(error) };
   } finally {
-    if (timeout !== undefined) clearTimeout(timeout);
     socket.close().catch(() => {});
   }
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timeout: number | undefined;
+  const timer = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`timeout after ${ms} ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timer]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
+async function readText(res: Response, limit: number): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+  while (bytes < limit) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    bytes += value.length;
+    text += decoder.decode(value, { stream: true });
+  }
+  await reader.cancel().catch(() => {});
+  return text;
 }
 
 type ServerStatus = { version?: { name?: string }; players?: { online?: number } };

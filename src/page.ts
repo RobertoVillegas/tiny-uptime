@@ -1,8 +1,8 @@
-import type { PublicMonitor } from "./hub";
+import type { PublicMonitor } from "./workspace/workspace";
 
 const HOUR = 3_600_000;
 
-export function renderStatusPage(monitors: PublicMonitor[], now: number): string {
+export function renderStatusPage(title: string, monitors: PublicMonitor[], now: number): string {
   const down = monitors.filter((m) => m.status === "down").length;
   const headline = down === 0 ? "All systems operational" : `${down} ${down === 1 ? "service" : "services"} down`;
   return `<!doctype html>
@@ -10,7 +10,7 @@ export function renderStatusPage(monitors: PublicMonitor[], now: number): string
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Status</title>
+<title>${escape(title)}</title>
 <style>
 :root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--line:#e7e5e4;--up:#16a34a;--down:#dc2626;--none:#d6d3d1;color-scheme:light dark}
 @media (prefers-color-scheme:dark){:root{--bg:#0c0a09;--fg:#f5f5f4;--muted:#a8a29e;--line:#292524;--none:#44403c}}
