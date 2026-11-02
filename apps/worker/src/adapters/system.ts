@@ -16,6 +16,13 @@ export const cryptoIds: Ids = {
   async hash(text) {
     return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))));
   },
+  async hashBase64Url(text) {
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+    return btoa(String.fromCharCode(...digest))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  },
 };
 
 function toHex(bytes: Uint8Array): string {

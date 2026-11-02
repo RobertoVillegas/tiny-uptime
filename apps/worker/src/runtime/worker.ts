@@ -9,6 +9,7 @@ import { incidentRoutes } from "../adapters/http/routes/incidents";
 import { maintenanceRoutes } from "../adapters/http/routes/maintenance";
 import { mcpRoutes } from "../adapters/http/routes/mcp";
 import { monitorRoutes } from "../adapters/http/routes/monitors";
+import { oauthRoutes } from "../adapters/http/routes/oauth";
 import { panelRoutes } from "../adapters/http/routes/panel";
 import { publicRoutes } from "../adapters/http/routes/public";
 import { statusPageRoutes } from "../adapters/http/routes/status-pages";
@@ -30,6 +31,7 @@ for (const register of [
   channelRoutes,
   apiKeyRoutes,
   mcpRoutes,
+  oauthRoutes,
   signInRoutes,
   accountRoutes,
 ]) {

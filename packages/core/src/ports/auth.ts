@@ -1,5 +1,6 @@
 import type { Result } from "better-result";
 import type { Membership, Role } from "@tiny-uptime/contracts";
+import type { AuthorizationCode, OAuthClient, OAuthGrant, OAuthToken } from "../domain/auth/oauth";
 import type { Challenge, Invite, Session, StoredPasskey, User } from "../domain/auth/user";
 import type { Invalid, Unauthorized } from "../errors";
 
@@ -71,4 +72,27 @@ export interface PasskeyVerifier {
     passkey: StoredPasskey,
     challenge: string,
   ): Promise<Result<{ counter: number }, Unauthorized>>;
+}
+
+export interface OAuthClientRepository {
+  insert(client: OAuthClient): void;
+  get(id: string): OAuthClient | null;
+  /** Deletes clients registered before this time that never got a grant: registration is open to anyone. */
+  purgeUnused(before: number): void;
+}
+
+export interface OAuthGrantRepository {
+  insert(grant: OAuthGrant): void;
+  get(id: string): OAuthGrant | null;
+  forUser(userId: string): (OAuthGrant & { clientName: string })[];
+  touch(id: string, at: number): void;
+  /** Deletes the grant with its codes and tokens. */
+  delete(id: string): void;
+  insertCode(code: AuthorizationCode): void;
+  /** Returns the code and deletes it, so it works once. */
+  takeCode(hash: string): AuthorizationCode | null;
+  insertToken(token: OAuthToken): void;
+  token(hash: string): OAuthToken | null;
+  markUsed(hash: string, at: number): void;
+  purgeExpired(now: number): void;
 }

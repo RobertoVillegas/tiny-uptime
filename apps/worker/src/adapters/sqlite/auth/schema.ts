@@ -59,4 +59,37 @@ CREATE TABLE IF NOT EXISTS recovery_code (
   hash TEXT NOT NULL,
   PRIMARY KEY (user_id, hash)
 ) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oauth_client (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  redirect_uris TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oauth_grant (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  scopes TEXT NOT NULL,
+  resource TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  last_used_at INTEGER
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS oauth_grant_user ON oauth_grant (user_id);
+CREATE TABLE IF NOT EXISTS oauth_code (
+  hash TEXT PRIMARY KEY,
+  grant_id TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS oauth_token (
+  hash TEXT PRIMARY KEY,
+  grant_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS oauth_token_grant ON oauth_token (grant_id);
 `;

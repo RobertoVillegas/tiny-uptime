@@ -6,7 +6,7 @@ import { Input } from "@tiny-uptime/ui/components/input";
 import { CodeInput } from "@tiny-uptime/ui/components/otp";
 import { Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { notify } from "@tiny-uptime/ui/components/toast";
-import { KeyRound, Plus, ShieldCheck } from "lucide-react";
+import { KeyRound, Plug, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { api, messageOf } from "../../lib/api";
 import { timeAgo } from "../../lib/format";
@@ -26,6 +26,7 @@ export function AccountPage() {
         <PasskeysSection />
         <TotpSection enabled={me.data.totpEnabled} />
         <RecoverySection left={me.data.recoveryCodesLeft} />
+        <ConnectedAppsSection />
         <SessionsSection />
       </div>
     </>
@@ -291,5 +292,57 @@ function SessionsSection() {
         />
       }
     />
+  );
+}
+
+function ConnectedAppsSection() {
+  const apps = useQuery({ queryKey: ["connected-apps"], queryFn: () => api.auth.connectedApps() });
+  const queryClient = useQueryClient();
+  const disconnect = useMutation({
+    mutationFn: (id: string) => api.auth.disconnectApp(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["connected-apps"] });
+      notify("App disconnected", { type: "success" });
+    },
+  });
+  const list = apps.data ?? [];
+  return (
+    <Section
+      title="Connected apps"
+      description={
+        list.length
+          ? "MCP clients you signed in to tiny-uptime. Disconnecting ends their access at once."
+          : "MCP clients you sign in with OAuth show up here, at /api/mcp on this site."
+      }
+    >
+      {list.length ? (
+        <ul className="divide-y divide-border">
+          {list.map((a) => (
+            <li key={a.id} className="flex items-center gap-3 px-5 py-3.5">
+              <Plug className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate font-medium">{a.clientName}</span>
+                <span className="text-[0.8125rem] text-muted-foreground">
+                  {a.workspaceName} · {a.scopes.includes("mcp:write") ? "Read and change" : "Read only"} ·{" "}
+                  {a.lastUsedAt ? `Used ${timeAgo(a.lastUsedAt)}` : `Connected ${timeAgo(a.createdAt)}`}
+                </span>
+              </div>
+              <ConfirmDialog
+                trigger={
+                  <Button variant="ghost" size="sm" className="text-down">
+                    Disconnect
+                  </Button>
+                }
+                title={`Disconnect ${a.clientName}?`}
+                description="It loses access right away and has to sign in again to come back."
+                confirmLabel="Disconnect"
+                pending={disconnect.isPending}
+                onConfirm={() => disconnect.mutate(a.id)}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Section>
   );
 }

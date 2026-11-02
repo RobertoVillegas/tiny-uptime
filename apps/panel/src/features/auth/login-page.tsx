@@ -18,7 +18,7 @@ export function LoginPage() {
 
   const finish = async () => {
     await queryClient.invalidateQueries({ queryKey: ["me"] });
-    if (next?.startsWith("/app/")) window.location.assign(next);
+    if (next?.startsWith("/app/") || next?.startsWith("/oauth/authorize?")) window.location.assign(next);
     else await navigate({ to: "/monitors" });
   };
 

@@ -1,6 +1,7 @@
 export * from "./errors";
 export * from "./domain/access";
 export * from "./domain/api-key";
+export * from "./domain/auth/oauth";
 export * from "./domain/auth/totp";
 export * from "./domain/auth/user";
 export * from "./domain/alert-message";

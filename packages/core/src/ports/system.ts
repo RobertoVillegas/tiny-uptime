@@ -9,4 +9,6 @@ export interface Ids {
   secret(bytes: number): string;
   /** SHA-256 hex, used to store tokens without storing the token. */
   hash(text: string): Promise<string>;
+  /** SHA-256 as unpadded base64url, the form PKCE (RFC 7636) compares. */
+  hashBase64Url(text: string): Promise<string>;
 }

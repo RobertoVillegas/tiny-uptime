@@ -2,6 +2,8 @@ import type {
   ChallengeRepository,
   InviteRepository,
   MembershipRepository,
+  OAuthClientRepository,
+  OAuthGrantRepository,
   PasskeyRepository,
   PasskeyVerifier,
   RecoveryCodeRepository,
@@ -21,5 +23,7 @@ export type AuthDeps = {
   invites: InviteRepository;
   memberships: MembershipRepository;
   recoveryCodes: RecoveryCodeRepository;
+  oauthClients: OAuthClientRepository;
+  oauthGrants: OAuthGrantRepository;
   verifier: PasskeyVerifier;
 };

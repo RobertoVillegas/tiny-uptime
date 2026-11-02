@@ -9,3 +9,4 @@ export * from "./maintenance";
 export * from "./monitor";
 export * from "./status";
 export * from "./status-page";
+export * from "./oauth";

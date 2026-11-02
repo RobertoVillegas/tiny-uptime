@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -287,4 +288,69 @@ test("the form sends each new monitor type's own fields", async ({ page, request
   });
   expect(byName.Registration).toMatchObject({ type: "domain", domain: "example.com", warnDays: 21, intervalSec: 86_400 });
   expect(byName.Database).toMatchObject({ type: "postgres", host: "db.example.com", port: 5432 });
+});
+
+test("an MCP client is connected through the consent page and can be disconnected", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Agents", slug: `agents-${Date.now()}` } })
+  ).json();
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "agents@example.com" } })
+  ).json();
+  const client = await (
+    await request.post("/oauth/register", { data: { client_name: "Claude Code", redirect_uris: ["http://127.0.0.1:33418/callback"] } })
+  ).json();
+
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Agents");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+  await expect(page.getByRole("heading", { name: "Monitors" })).toBeVisible();
+
+  const verifier = randomBytes(32).toString("base64url");
+  const query = new URLSearchParams({
+    response_type: "code",
+    client_id: client.client_id,
+    redirect_uri: "http://127.0.0.1:33418/callback",
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+    state: "s1",
+  });
+  await page.goto(`/oauth/authorize?${query}`);
+  await expect(page.getByRole("heading", { name: "Connect Claude Code to tiny-uptime?" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /Read and change/ })).toBeChecked();
+  await expectAccessible(page);
+  const decision = page.waitForResponse((r) => r.url().endsWith("/oauth/authorize") && r.request().method() === "POST");
+  await page.getByRole("button", { name: "Connect" }).click();
+  const back = new URL((await decision).headers().location!);
+  expect(back.origin + back.pathname).toBe("http://127.0.0.1:33418/callback");
+  expect(back.searchParams.get("state")).toBe("s1");
+  const code = back.searchParams.get("code")!;
+
+  const tokens = await (
+    await request.post("/oauth/token", {
+      form: {
+        grant_type: "authorization_code",
+        code,
+        client_id: client.client_id,
+        redirect_uri: "http://127.0.0.1:33418/callback",
+        code_verifier: verifier,
+      },
+    })
+  ).json();
+  expect(tokens).toMatchObject({ scope: "mcp:read mcp:write" });
+
+  await page.goto("/app/account");
+  await expect(page.getByText("Claude Code")).toBeVisible();
+  await expect(page.getByText(/Agents · Read and change/)).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Disconnect" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.getByText("App disconnected")).toBeVisible();
+  const ping = await request.post("/api/mcp", {
+    headers: { authorization: `Bearer ${tokens.access_token}` },
+    data: { jsonrpc: "2.0", id: 1, method: "ping" },
+  });
+  expect(ping.status()).toBe(401);
 });

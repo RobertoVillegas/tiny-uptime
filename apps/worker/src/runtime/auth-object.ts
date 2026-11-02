@@ -1,9 +1,10 @@
 import { DurableObject } from "cloudflare:workers";
 import { Result } from "better-result";
-import type { AddPasskeyInput, InviteCompleteInput, LoginCompleteInput, Role } from "@tiny-uptime/contracts";
+import type { AddPasskeyInput, ClientRegistrationInput, InviteCompleteInput, LoginCompleteInput, Role } from "@tiny-uptime/contracts";
 import { accounts } from "@tiny-uptime/core";
 import { AUTH_SCHEMA } from "../adapters/sqlite/auth/schema";
 import { SqliteMemberships, SqliteInvites, SqliteRecoveryCodes } from "../adapters/sqlite/auth/memberships";
+import { SqliteOAuthClients, SqliteOAuthGrants } from "../adapters/sqlite/auth/oauth";
 import { SqlitePasskeys } from "../adapters/sqlite/auth/passkeys";
 import { SqliteChallenges, SqliteSessions } from "../adapters/sqlite/auth/sessions";
 import { SqliteUsers } from "../adapters/sqlite/auth/users";
@@ -34,6 +35,8 @@ export class AuthStore extends DurableObject<Env> {
       invites: new SqliteInvites(sql),
       memberships: new SqliteMemberships(sql),
       recoveryCodes: new SqliteRecoveryCodes(sql),
+      oauthClients: new SqliteOAuthClients(sql),
+      oauthGrants: new SqliteOAuthGrants(sql),
     };
   }
 
@@ -141,5 +144,46 @@ export class AuthStore extends DurableObject<Env> {
 
   setMemberRole(actor: accounts.Actor, userId: string, role: Role | null) {
     return toWire(accounts.setMemberRole(this.deps(), actor, userId, role));
+  }
+
+  // ---- OAuth for MCP clients ----
+
+  registerOAuthClient(input: ClientRegistrationInput) {
+    return toWire(accounts.oauth.registerClient(this.deps(), input));
+  }
+
+  checkAuthorize(params: accounts.oauth.AuthorizeParams, resource: string) {
+    const checked = accounts.oauth.checkAuthorize(this.deps(), params, resource);
+    return checked.isOk() ? { ok: true as const, request: checked.value } : { ok: false as const, ...checked.error };
+  }
+
+  async approveOAuth(userId: string, workspaceId: string, request: accounts.oauth.AuthorizeRequest) {
+    return toWire(await accounts.oauth.approve(this.deps(), userId, workspaceId, request));
+  }
+
+  async exchangeOAuthCode(p: { code: string; clientId: string; redirectUri: string; codeVerifier: string }) {
+    const result = await accounts.oauth.exchangeCode(this.deps(), p);
+    return result.isOk() ? { ok: true as const, tokens: result.value } : { ok: false as const, ...result.error };
+  }
+
+  async refreshOAuth(p: { refreshToken: string; clientId: string }) {
+    const result = await accounts.oauth.refreshTokens(this.deps(), p);
+    return result.isOk() ? { ok: true as const, tokens: result.value } : { ok: false as const, ...result.error };
+  }
+
+  oauthAccess(hash: string) {
+    return accounts.oauth.resolveAccessToken(this.deps(), hash);
+  }
+
+  async revokeOAuthToken(token: string) {
+    await accounts.oauth.revokeToken(this.deps(), token);
+  }
+
+  oauthGrants(userId: string) {
+    return accounts.oauth.listGrants(this.deps(), userId);
+  }
+
+  revokeOAuthGrant(userId: string, id: string) {
+    return toWire(accounts.oauth.revokeGrant(this.deps(), userId, id));
   }
 }

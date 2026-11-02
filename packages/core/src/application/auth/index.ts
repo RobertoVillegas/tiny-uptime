@@ -6,3 +6,4 @@ export * from "./members";
 export * from "./recovery-codes";
 export * from "./sessions";
 export * from "./sign-in";
+export * as oauth from "./oauth";

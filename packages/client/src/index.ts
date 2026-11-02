@@ -23,6 +23,7 @@ import type {
   SignInStage,
   StatusPage,
   StatusPageDraft,
+  OAuthGrantDto,
 } from "@tiny-uptime/contracts";
 import { call, type Transport } from "./http";
 
@@ -61,6 +62,8 @@ export function createClient(t: Transport) {
       totpDisable: (code: string) => post<{ ok: true }>("/auth/totp/disable", { code }),
       recoveryCodes: () => post<{ codes: string[] }>("/auth/recovery-codes"),
       endOtherSessions: () => del<{ ok: true }>("/auth/sessions/others"),
+      connectedApps: () => get<OAuthGrantDto[]>("/auth/oauth-grants"),
+      disconnectApp: (id: string) => del<{ ok: true }>(`/auth/oauth-grants/${encodeURIComponent(id)}`),
     },
     members: {
       list: (workspaceId: string) => get<{ members: Member[]; invites: PendingInvite[] }>(`/auth/workspaces/${workspaceId}/members`),
