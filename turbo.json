@@ -14,7 +14,8 @@
     },
     "budget": {
       "dependsOn": ["^build"],
-      "cache": false
+      "cache": false,
+      "env": ["STARTUP_BUDGET_MS"]
     }
   }
 }
