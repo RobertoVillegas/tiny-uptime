@@ -23,3 +23,5 @@ jobs:
           # The same build profiles about twice as slow on a GitHub runner as on an M-series Mac
           # (11 ms vs 5 ms; Cloudflare itself reports 3 ms), so CI allows twice the local budget.
           STARTUP_BUDGET_MS: "20"
+      - run: pnpm --filter @tiny-uptime/panel exec playwright install --with-deps chromium
+      - run: pnpm e2e

@@ -76,6 +76,8 @@ const HeartbeatMonitor = v.object({ type: v.literal("heartbeat"), ...common, gra
 /** A monitor as clients send it: flat, with the fields of its type. */
 export const MonitorInput = v.variant("type", [HttpMonitor, TcpMonitor, MinecraftMonitor, HeartbeatMonitor]);
 export type MonitorInput = v.InferOutput<typeof MonitorInput>;
+/** What a client may send: fields with defaults are optional. */
+export type MonitorDraft = v.InferInput<typeof MonitorInput>;
 
 /** Fields to change on an existing monitor; the rest keep their value. The type cannot change. */
 export const MonitorPatch = v.looseObject({ type: v.optional(v.picklist(MONITOR_TYPES)) });

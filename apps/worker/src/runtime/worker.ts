@@ -7,6 +7,7 @@ import { signInRoutes } from "../adapters/http/routes/auth-sign-in";
 import { channelRoutes } from "../adapters/http/routes/channels";
 import { incidentRoutes } from "../adapters/http/routes/incidents";
 import { monitorRoutes } from "../adapters/http/routes/monitors";
+import { panelRoutes } from "../adapters/http/routes/panel";
 import { publicRoutes } from "../adapters/http/routes/public";
 import type { Env } from "./env";
 
@@ -17,6 +18,7 @@ export { Workspace } from "./workspace-object";
 const router = new Router();
 for (const register of [
   publicRoutes,
+  panelRoutes,
   adminRoutes,
   monitorRoutes,
   incidentRoutes,

@@ -1,0 +1,14 @@
+{
+  "name": "@tiny-uptime/client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiny-uptime/contracts": "workspace:*"
+  }
+}

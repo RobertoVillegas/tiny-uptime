@@ -5,7 +5,10 @@ export type Handler = (ctx: Ctx) => Promise<Response> | Response;
 
 type Route = { method: string; pattern: RegExp; keys: string[]; handler: Handler };
 
-/** A route table: `router.get("/api/v1/monitors/:id", handler)`. Patterns are compiled once, at startup. */
+/**
+ * A route table: `router.get("/api/v1/monitors/:id", handler)`, and `/app/*` for a path and everything
+ * below it. Patterns are compiled once, at startup.
+ */
 export class Router {
   private readonly routes: Route[] = [];
 
@@ -24,10 +27,15 @@ export class Router {
 
   on(method: string, path: string, handler: Handler): this {
     const keys: string[] = [];
-    const source = path.replace(/:([a-zA-Z]+)/g, (_, key: string) => {
-      keys.push(key);
-      return "([^/]+)";
-    });
+    const source = path
+      .replace(/:([a-zA-Z]+)/g, (_, key: string) => {
+        keys.push(key);
+        return "([^/]+)";
+      })
+      .replace(/\/\*$/, () => {
+        keys.push("rest");
+        return "(?:/(.*))?";
+      });
     this.routes.push({ method, pattern: new RegExp(`^${source}$`), keys, handler });
     return this;
   }
@@ -41,7 +49,7 @@ export class Router {
       pathMatched = true;
       const method = request.method === "HEAD" ? "GET" : request.method;
       if (route.method !== method) continue;
-      const params = Object.fromEntries(route.keys.map((key, i) => [key, decodeURIComponent(match[i + 1]!)]));
+      const params = Object.fromEntries(route.keys.map((key, i) => [key, decodeURIComponent(match[i + 1] ?? "")]));
       return { handler: route.handler, params };
     }
     return { status: pathMatched ? 405 : 404 };

@@ -28,7 +28,8 @@ const rules: Rule[] = [
   { layer: "packages/core/src/index.ts", mayImport: ["packages/core/src"] },
   { layer: "packages/core/test", mayImport: ["packages/core/src", "packages/contracts/src"] },
   { layer: "packages/ui/src", mayImport: [] },
-  { layer: "apps/panel/src", mayImport: ["packages/contracts/src", "packages/ui/src"] },
+  { layer: "packages/client/src", mayImport: ["packages/contracts/src"] },
+  { layer: "apps/panel/src", mayImport: ["packages/contracts/src", "packages/client/src", "packages/ui/src"] },
   {
     layer: "apps/worker/src/adapters",
     mayImport: ["packages/core/src", "packages/contracts/src", "apps/worker/src/runtime/env.ts", "apps/worker/src/runtime/wire.ts"],
@@ -52,6 +53,7 @@ const workspacePackages: Record<string, string> = {
   "@tiny-uptime/contracts": "packages/contracts/src/index.ts",
   "@tiny-uptime/core": "packages/core/src/index.ts",
   "@tiny-uptime/ui": "packages/ui/src",
+  "@tiny-uptime/client": "packages/client/src/index.ts",
 };
 
 const SOURCE = /\.(ts|tsx|mts|js|mjs)$/;

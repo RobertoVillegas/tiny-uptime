@@ -1,0 +1,2 @@
+import{t as e}from"./copy-button-D1j-Espc.js";import{z as t}from"./api-B__Qyocf.js";var n=t();function r({codes:t}){return(0,n.jsxs)(`div`,{className:`flex flex-col gap-3`,children:[(0,n.jsx)(`ol`,{className:`grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-control bg-subtle p-4 font-mono text-[0.8125rem] tabular-nums`,children:t.map(e=>(0,n.jsx)(`li`,{children:e},e))}),(0,n.jsx)(e,{text:t.join(`
+`),label:`Copy codes`,className:`self-start`})]})}export{r as t};

@@ -17,6 +17,7 @@ export const ChannelInput = v.object({
   enabled: v.optional(v.boolean(), true),
 });
 export type ChannelInput = v.InferOutput<typeof ChannelInput>;
+export type ChannelDraft = v.InferInput<typeof ChannelInput>;
 
 export const ChannelPatch = v.object({
   type: v.optional(v.picklist(CHANNEL_TYPES)),

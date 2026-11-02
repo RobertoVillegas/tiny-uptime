@@ -7,11 +7,14 @@ A Worker serves the public status page, heartbeats, the REST API and sign-in. Ea
 ## Layout
 
 ```
-packages/contracts   API schemas (Valibot) and response types, shared by the worker and future clients
+packages/contracts   API schemas (Valibot) and response types, shared by the worker and every client
+packages/client      typed API client, used by the panel and reusable by a mobile app
+packages/ui          the panel's components: Base UI, Tailwind 4, cva, tokens in OKLCH
 packages/core        domain rules and use cases; no Cloudflare APIs
   domain/            pure rules: monitor state machine, schedule, incidents, roles, TOTP
   application/       use cases, one file per area, depending on ports
   ports/             interfaces the use cases need: repositories, checker, notifier, clock
+apps/panel           private panel at /app: React 19, TanStack Router, Query and Form, built by Vite
 apps/worker          the Cloudflare side
   adapters/          SQLite repositories, checks (HTTP, TCP, Minecraft), webhook, passkeys, HTTP routes
   runtime/           Worker entry and Durable Objects: wire adapters to use cases, nothing else
@@ -21,7 +24,9 @@ Dependencies point inward: `domain` imports nothing, `application` imports `doma
 
 `pnpm check:boundaries` enforces these rules on every import, along with declared dependencies, so a layer cannot quietly reach into another.
 
-Tests follow the layers: `packages/core/test` checks the domain rules in plain Node, and `apps/worker/test` drives the real Worker and Durable Objects through HTTP, including passkey sign-in with a software authenticator.
+The panel is static files served by the Worker's static assets, so it costs no Worker CPU; the public status page stays server-rendered HTML with no JavaScript.
+
+Tests follow the layers: `packages/core/test` checks the domain rules in plain Node, and `apps/worker/test` drives the real Worker and Durable Objects through HTTP, including passkey sign-in with a software authenticator. `pnpm e2e` runs the panel against the real Worker in Chromium, with a virtual authenticator and axe accessibility checks.
 
 ## Budget
 
@@ -44,7 +49,9 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 - Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
 - Public status page per workspace at `/s/<slug>` (and `/` for `PUBLIC_SLUG`), JSON at `/api/public/<slug>`. Only monitors marked `public` appear.
 
-Next: the private panel, an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
+- Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, webhook alerts with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
+
+Next: an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
 
 ## Run
 

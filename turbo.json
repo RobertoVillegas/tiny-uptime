@@ -16,6 +16,14 @@
       "dependsOn": ["^build"],
       "cache": false,
       "env": ["STARTUP_BUDGET_MS"]
+    },
+    "@tiny-uptime/worker#test": {
+      "dependsOn": ["^typecheck", "@tiny-uptime/panel#build"]
+    },
+    "@tiny-uptime/worker#budget": {
+      "dependsOn": ["@tiny-uptime/panel#build"],
+      "cache": false,
+      "env": ["STARTUP_BUDGET_MS"]
     }
   }
 }

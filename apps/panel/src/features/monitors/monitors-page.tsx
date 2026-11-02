@@ -1,0 +1,137 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import type { Monitor } from "@tiny-uptime/contracts";
+import { Button } from "@tiny-uptime/ui/components/button";
+import { Dialog } from "@tiny-uptime/ui/components/dialog";
+import { StatusBadge, StatusDot } from "@tiny-uptime/ui/components/status";
+import { EmptyState, Section, Skeleton } from "@tiny-uptime/ui/components/surface";
+import { notify } from "@tiny-uptime/ui/components/toast";
+import { Activity, Plus } from "lucide-react";
+import { useState } from "react";
+import { ms, timeAgo } from "../../lib/format";
+import { monitorsQuery } from "../../lib/queries";
+import { PageHeader } from "../shell/page-header";
+import { MonitorForm } from "./monitor-form";
+import { useCreateMonitor } from "./mutations";
+import { targetOf, typeLabel } from "./describe";
+
+export function MonitorsPage() {
+  const monitors = useQuery(monitorsQuery());
+  const [creating, setCreating] = useState(false);
+  const create = useCreateMonitor();
+  const navigate = useNavigate();
+  const list = monitors.data ?? [];
+
+  return (
+    <>
+      <PageHeader
+        title="Monitors"
+        description={monitors.data ? summary(list) : " "}
+        actions={
+          <Button variant="primary" onClick={() => setCreating(true)}>
+            <Plus />
+            New monitor
+          </Button>
+        }
+      />
+      <Dialog
+        open={creating}
+        onOpenChange={setCreating}
+        title="New monitor"
+        description="Checks start right away; heartbeats wait for their first ping."
+      >
+        <MonitorForm
+          submitLabel="Create monitor"
+          onCancel={() => setCreating(false)}
+          onSubmit={async (draft) => {
+            const monitor = await create.mutateAsync(draft);
+            setCreating(false);
+            notify(`${monitor.name} created`, { type: "success" });
+            await navigate({ to: "/monitors/$monitorId", params: { monitorId: monitor.id } });
+          }}
+        />
+      </Dialog>
+
+      <Section>
+        {monitors.isPending ? (
+          <ListSkeleton />
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon={<Activity />}
+            title="No monitors yet"
+            description="Add a website, an API, a TCP port or a heartbeat from a cron job, and you will get alerts when it goes down."
+            action={
+              <Button variant="primary" onClick={() => setCreating(true)}>
+                <Plus />
+                Add your first monitor
+              </Button>
+            }
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {list.map((m) => (
+              <MonitorRow key={m.id} monitor={m} />
+            ))}
+          </ul>
+        )}
+      </Section>
+    </>
+  );
+}
+
+function MonitorRow({ monitor: m }: { monitor: Monitor }) {
+  return (
+    <li>
+      <Link
+        to="/monitors/$monitorId"
+        params={{ monitorId: m.id }}
+        className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-0.5 px-5 py-3.5 transition-colors duration-150 hover:bg-subtle sm:grid-cols-[1fr_7rem_5rem_8rem]"
+      >
+        <StatusDot status={m.status} className="sm:hidden" />
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{m.name}</span>
+          <span className="truncate text-[0.8125rem] text-muted-foreground">
+            {typeLabel(m.type)}
+            {targetOf(m) ? ` · ${targetOf(m)}` : ""}
+          </span>
+        </span>
+        <StatusBadge status={m.status} className="hidden sm:inline-flex" />
+        <span className="hidden text-right text-[0.8125rem] text-muted-foreground tabular-nums sm:block">
+          {m.type === "heartbeat" ? "" : ms(m.lastLatencyMs)}
+        </span>
+        <span className="text-right text-[0.8125rem] text-muted-foreground tabular-nums">
+          {m.paused ? "Paused" : timeAgo(m.lastCheckedAt)}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+/** One line that says what matters first: anything down, then what is still waiting or paused. */
+function summary(list: Monitor[]): string {
+  if (list.length === 0) return "Nothing is being watched yet.";
+  const count = (status: Monitor["status"]) => list.filter((m) => m.status === status).length;
+  const parts = [
+    count("down") ? `${count("down")} down` : null,
+    count("up") ? `${count("up")} up` : null,
+    count("pending") ? `${count("pending")} waiting for a check` : null,
+    count("paused") ? `${count("paused")} paused` : null,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function ListSkeleton() {
+  return (
+    <div className="divide-y divide-border" aria-busy>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-3 px-5 py-4">
+          <Skeleton className="size-2 rounded-full" />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-3 w-64" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
