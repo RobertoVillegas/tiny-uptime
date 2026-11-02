@@ -1,8 +1,12 @@
+import { authStore, currentSession, handleAuth, sameOrigin } from "./auth/routes";
+import { ROLES } from "./auth/store";
 import type { Env } from "./env";
 import { isWorkspaceId, newApiKey, newId, parseApiKey, parseHeartbeatToken, sha256Hex } from "./lib/ids";
-import { asObject, InvalidInput, str } from "./lib/validate";
+import { asObject, InvalidInput, oneOf, str } from "./lib/validate";
 import { renderStatusPage } from "./page";
+import type { ApiRequest } from "./workspace/api";
 
+export { AuthStore } from "./auth/store";
 export { Directory } from "./directory";
 export { Workspace } from "./workspace/workspace";
 
@@ -21,6 +25,8 @@ export default {
       if (beat) return await heartbeat(request, env, beat[1]!);
       if (path.startsWith("/api/v1/")) return await api(request, env, url);
       if (path === "/api/admin/workspaces") return await adminWorkspaces(request, env);
+      if (path === "/api/admin/invites") return await adminInvite(request, env, url);
+      if (path.startsWith("/auth/")) return await handleAuth(request, env, url, () => readJson(request));
 
       const page = path === "/" ? env.PUBLIC_SLUG : /^\/s\/([^/]+)$/.exec(path)?.[1];
       if (page !== undefined && request.method === "GET") return await statusPage(env, page);
@@ -43,13 +49,32 @@ async function heartbeat(request: Request, env: Env, token: string): Promise<Res
   return known ? Response.json({ ok: true }) : error(404, "unknown heartbeat");
 }
 
+/**
+ * The REST API accepts an API key, or the panel's session cookie plus the workspace to act on in
+ * `x-workspace-id`. Members are checked here; API keys are checked by the workspace itself.
+ */
 async function api(request: Request, env: Env, url: URL): Promise<Response> {
   const key = bearer(request);
-  const parsed = key ? parseApiKey(key) : null;
-  if (!key || !parsed) return error(401, "missing or malformed API key");
+  let workspaceId: string;
+  let principal: ApiRequest["principal"];
+  if (key) {
+    const parsed = parseApiKey(key);
+    if (!parsed) return error(401, "malformed API key");
+    workspaceId = parsed.workspaceId;
+    principal = { kind: "key", keyHash: await sha256Hex(key) };
+  } else {
+    const session = await currentSession(request, env);
+    if (!session || session.info.stage !== "full") return error(401, "sign in or send an API key");
+    if (!sameOrigin(request, url)) return error(403, "cross-origin request refused");
+    const requested = request.headers.get("x-workspace-id") ?? "";
+    const membership = session.info.memberships.find((m) => m.workspaceId === requested);
+    if (!membership) return error(404, "workspace not found");
+    workspaceId = membership.workspaceId;
+    principal = { kind: "member", userId: session.info.userId, role: membership.role };
+  }
   const body = request.method === "GET" || request.method === "DELETE" ? undefined : await readJson(request);
-  const res = await workspace(env, parsed.workspaceId).api({
-    keyHash: await sha256Hex(key),
+  const res = await workspace(env, workspaceId).api({
+    principal,
     method: request.method,
     path: url.pathname.slice("/api/v1".length),
     query: Object.fromEntries(url.searchParams),
@@ -57,7 +82,21 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
     origin: url.origin,
   });
   if (res.json === null) return new Response(null, { status: res.status });
-  return new Response(res.json, { status: res.status, headers: { "content-type": "application/json" } });
+  return new Response(res.json, { status: res.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+}
+
+/** Lets the operator invite a workspace's first owner, who then signs up with a passkey. */
+async function adminInvite(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!(await isOperator(request, env))) return error(401, "unauthorized");
+  if (request.method !== "POST") return error(405, "method not allowed");
+  const input = asObject(await readJson(request));
+  const workspaceId = str(input, "workspaceId", { max: 12 });
+  const email = str(input, "email", { max: 200, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ });
+  const role = oneOf(input, "role", ROLES, "owner");
+  const entry = (await env.DIRECTORY.get(env.DIRECTORY.idFromName("directory")).list()).find((w) => w.id === workspaceId);
+  if (!entry) return error(404, "workspace not found");
+  const token = await authStore(env).createInvite(email, entry.id, entry.name, role);
+  return Response.json({ inviteUrl: `${url.origin}/app/invite?token=${token}`, email, role }, { status: 201 });
 }
 
 async function adminWorkspaces(request: Request, env: Env): Promise<Response> {

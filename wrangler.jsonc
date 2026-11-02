@@ -8,12 +8,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "WORKSPACE", "class_name": "Workspace" },
-      { "name": "DIRECTORY", "class_name": "Directory" }
+      { "name": "DIRECTORY", "class_name": "Directory" },
+      { "name": "AUTH", "class_name": "AuthStore" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["Hub"] },
-    { "tag": "v2", "new_sqlite_classes": ["Workspace", "Directory"], "deleted_classes": ["Hub"] }
+    { "tag": "v2", "new_sqlite_classes": ["Workspace", "Directory"], "deleted_classes": ["Hub"] },
+    { "tag": "v3", "new_sqlite_classes": ["AuthStore"] }
   ],
   "observability": {
     "enabled": true,

@@ -165,6 +165,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@passwordless-id/webauthn':
+        specifier: 2.4.1
+        version: 2.4.1
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: 1.4.4
@@ -602,6 +606,9 @@ packages:
 
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
+
+  '@passwordless-id/webauthn@2.4.1':
+    resolution: {integrity: sha512-hKXb9JdzVMWT9haQEEqf/OrAFTNBQNeTMUa68DDh1awEqXKA3DTa0glkbWytjyrE8b8TGBj55am627uE/vtBkA==}
 
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
@@ -1402,6 +1409,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   '@oxc-project/types@0.156.0': {}
+
+  '@passwordless-id/webauthn@2.4.1': {}
 
   '@poppinss/colors@4.1.6':
     dependencies:

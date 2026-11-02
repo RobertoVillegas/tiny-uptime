@@ -4,8 +4,11 @@ import { asObject, InvalidInput, str } from "../lib/validate";
 import { flatten, mergeMonitor, parseMonitor, type MonitorFields } from "../monitors/model";
 import type { MonitorRow, Workspace } from "./workspace";
 
+/** Who is calling: an API key (checked by the workspace) or a signed-in member (checked by the Worker). */
+export type Principal = { kind: "key"; keyHash: string } | { kind: "member"; userId: string; role: "owner" | "editor" | "viewer" };
+
 export type ApiRequest = {
-  keyHash: string;
+  principal: Principal;
   method: string;
   /** Path below /api/v1, e.g. "/monitors/abc". */
   path: string;
@@ -34,6 +37,8 @@ export async function handleApi(ws: Workspace, req: ApiRequest): Promise<ApiResp
 async function route(ws: Workspace, req: ApiRequest): Promise<ApiResponse> {
   const [resource, id, action] = req.path.split("/").filter(Boolean);
   const { method } = req;
+  const forbidden = denied(req.principal, method, resource);
+  if (forbidden) return { status: 403, body: { error: forbidden } };
 
   if (resource === "workspace" && !id && method === "GET") {
     return ok({ id: ws.meta("id"), name: ws.meta("name") });
@@ -96,6 +101,18 @@ async function route(ws: Workspace, req: ApiRequest): Promise<ApiResponse> {
   }
 
   return { status: 404, body: { error: `no route for ${method} /api/v1${req.path}` } };
+}
+
+/**
+ * API keys act with full access to their workspace. Members: viewers read, editors change
+ * monitors and channels, owners also manage API keys.
+ */
+function denied(principal: Principal, method: string, resource: string | undefined): string | null {
+  if (principal.kind === "key") return null;
+  if (principal.role === "owner") return null;
+  if (resource === "api-keys") return "only owners manage API keys";
+  if (principal.role === "viewer" && method !== "GET") return "viewers cannot make changes";
+  return null;
 }
 
 // ---- monitors ----

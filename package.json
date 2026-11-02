@@ -16,5 +16,8 @@
     "vitest": "4.1.12",
     "wrangler": "4.149.0"
   },
-  "packageManager": "pnpm@12.16.1"
+  "packageManager": "pnpm@12.16.1",
+  "dependencies": {
+    "@passwordless-id/webauthn": "2.4.1"
+  }
 }

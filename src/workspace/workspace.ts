@@ -74,7 +74,7 @@ export class Workspace extends DurableObject<Env> {
   async api(request: ApiRequest): Promise<{ status: number; json: string | null }> {
     const unauthorized = { status: 401, json: JSON.stringify({ error: "invalid API key" }) };
     if (!this.initialized()) return unauthorized;
-    if (!this.authenticate(request.keyHash, Date.now())) return unauthorized;
+    if (request.principal.kind === "key" && !this.authenticate(request.principal.keyHash, Date.now())) return unauthorized;
     const res: ApiResponse = await handleApi(this, request);
     return { status: res.status, json: res.body === null ? null : JSON.stringify(res.body) };
   }
