@@ -28,7 +28,7 @@ export async function checkHttp(target: HttpTarget): Promise<CheckOutcome> {
   }
 }
 
-async function readText(res: Response, limit: number): Promise<string> {
+export async function readText(res: Response, limit: number): Promise<string> {
   if (!res.body) return "";
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

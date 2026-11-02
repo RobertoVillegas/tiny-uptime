@@ -1,6 +1,20 @@
 import type { Monitor, MonitorType } from "@tiny-uptime/contracts";
 
-const LABELS: Record<MonitorType, string> = { http: "HTTP", tcp: "TCP", minecraft: "Minecraft", heartbeat: "Heartbeat" };
+const LABELS: Record<MonitorType, string> = {
+  http: "HTTP",
+  tcp: "TCP",
+  minecraft: "Minecraft",
+  heartbeat: "Heartbeat",
+  dns: "DNS",
+  postgres: "PostgreSQL",
+  mysql: "MySQL",
+  redis: "Redis",
+  websocket: "WebSocket",
+  domain: "Domain",
+  mcp: "MCP",
+  evm: "EVM",
+  solana: "Solana",
+};
 
 export function typeLabel(type: MonitorType): string {
   return LABELS[type];
@@ -10,12 +24,23 @@ export function typeLabel(type: MonitorType): string {
 export function targetOf(m: Monitor): string {
   switch (m.type) {
     case "http":
-      return m.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    case "websocket":
+    case "mcp":
+    case "evm":
+    case "solana":
+      return m.url.replace(/^(https?|wss?):\/\//, "").replace(/\/$/, "");
     case "tcp":
     case "minecraft":
+    case "postgres":
+    case "mysql":
+    case "redis":
       return `${m.host}:${m.port}`;
     case "heartbeat":
       return `every ${every(m.intervalSec)}`;
+    case "dns":
+      return `${m.recordType} ${m.host}`;
+    case "domain":
+      return `${m.domain}, warns ${m.warnDays} days ahead`;
   }
 }
 
