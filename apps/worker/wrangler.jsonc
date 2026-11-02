@@ -11,6 +11,9 @@
   // everything else reaches the Worker, which answers /app/* with the panel's index.html.
   "assets": { "directory": "../panel/dist", "binding": "ASSETS", "run_worker_first": ["/*", "!/app/assets/*"] },
   "durable_objects": {
+    // New code reaches every object right away, so a Worker never calls a method its objects lack yet.
+    // Alarms survive the reset: one cut short is retried.
+    "code_update_strategy": { "mode": "immediate" },
     "bindings": [
       { "name": "WORKSPACE", "class_name": "Workspace" },
       { "name": "DIRECTORY", "class_name": "Directory" },
