@@ -154,3 +154,57 @@ test("alert rules, maintenance and follow-ups can be set from the panel", async 
   expect((await (await request.get("/api/v1/alert-policy", { headers: key })).json()).reminderEveryMinutes).toBe(30);
   await expectAccessible(page);
 });
+
+test("the form sends each new monitor type's own fields", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Types", slug: `types-${Date.now()}` } })
+  ).json();
+  const key = { authorization: `Bearer ${workspace.apiKey}` };
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "types@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Types");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  const create = async (type: RegExp, name: string, fill: () => Promise<void>) => {
+    await page.getByRole("link", { name: "Monitors" }).first().click();
+    await page.getByRole("button", { name: "New monitor" }).click();
+    await page.getByRole("combobox", { name: "What to monitor" }).click();
+    await page.getByRole("option", { name: type }).click();
+    await page.getByLabel("Name", { exact: true }).fill(name);
+    await fill();
+    await page.getByRole("button", { name: "Create monitor" }).click();
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  };
+
+  await create(/DNS record/, "Mail", async () => {
+    await page.getByLabel("Record name").fill("example.com");
+    await page.getByRole("combobox", { name: "Record type" }).click();
+    await page.getByRole("option", { name: "MX", exact: true }).click();
+    await page.getByLabel("Expected value").fill("10 mail.example.com");
+    await expectAccessible(page);
+  });
+  await create(/Domain registration/, "Registration", async () => {
+    await expect(page.getByRole("combobox", { name: "Check" })).toHaveText(/Every day/);
+    await page.getByLabel("Domain", { exact: true }).fill("example.com");
+    await page.getByLabel("Warn days ahead").fill("21");
+  });
+  await create(/PostgreSQL/, "Database", async () => {
+    await expect(page.getByLabel("Port")).toHaveAttribute("placeholder", "5432");
+    await page.getByLabel("Host").fill("db.example.com");
+  });
+
+  const monitors = (await (await request.get("/api/v1/monitors", { headers: key })).json()) as Record<string, unknown>[];
+  const byName = Object.fromEntries(monitors.map((m) => [m.name, m]));
+  expect(byName.Mail).toMatchObject({
+    type: "dns",
+    host: "example.com",
+    recordType: "MX",
+    expected: { value: "10 mail.example.com", mode: "exact" },
+  });
+  expect(byName.Registration).toMatchObject({ type: "domain", domain: "example.com", warnDays: 21, intervalSec: 86_400 });
+  expect(byName.Database).toMatchObject({ type: "postgres", host: "db.example.com", port: 5432 });
+});
