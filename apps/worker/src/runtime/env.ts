@@ -12,4 +12,8 @@ export interface Env {
   ADMIN_TOKEN?: string;
   /** Slug of the workspace whose status page is served at `/`. */
   PUBLIC_SLUG?: string;
+  /** Cloudflare Email Service `send_email` binding for email alert channels; needs a verified sender domain. */
+  EMAIL?: SendEmail;
+  /** The verified address email alerts are sent from. */
+  EMAIL_FROM?: string;
 }

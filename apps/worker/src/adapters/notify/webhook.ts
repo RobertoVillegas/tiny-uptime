@@ -1,7 +1,6 @@
-import { Result } from "better-result";
-import { DeliveryFailed, type AlertEvent, type Channel, type Notifier } from "@tiny-uptime/core";
-import { USER_AGENT } from "../checks/http";
-import { errorText } from "../checks/timeout";
+import type { Result } from "better-result";
+import type { AlertEvent, ChannelOf, DeliveryFailed } from "@tiny-uptime/core";
+import { deliverJson } from "./send";
 
 /**
  * Posts alerts as JSON in OpenUptime's webhook format, so receivers written for it (kukuroo's
@@ -23,24 +22,9 @@ export function toOpenUptimePayload(event: AlertEvent) {
   };
 }
 
-export const webhookNotifier: Notifier = {
-  async send(channel: Channel, event: AlertEvent): Promise<Result<void, DeliveryFailed>> {
-    const host = new URL(channel.url).host;
-    try {
-      const res = await fetch(channel.url, {
-        method: "POST",
-        headers: { "content-type": "application/json", "user-agent": USER_AGENT },
-        body: JSON.stringify(toOpenUptimePayload(event)),
-        signal: AbortSignal.timeout(10_000),
-      });
-      await res.body?.cancel();
-      if (!res.ok) return Result.err(new DeliveryFailed({ message: `${host} responded HTTP ${res.status}` }));
-      return Result.ok(undefined);
-    } catch (error) {
-      return Result.err(new DeliveryFailed({ message: `${host}: ${errorText(error)}` }));
-    }
-  },
-};
+export function sendWebhook(channel: ChannelOf<"webhook">, event: AlertEvent): Promise<Result<void, DeliveryFailed>> {
+  return deliverJson(channel.url, toOpenUptimePayload(event));
+}
 
 function iso(ms: number | null): string | null {
   return ms === null ? null : new Date(ms).toISOString();

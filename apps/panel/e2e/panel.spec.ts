@@ -189,3 +189,48 @@ test("a status page is published from the panel and served publicly", async ({ p
   expect(html).toContain("Checkout API");
   expect(html).not.toContain("Secret job");
 });
+
+test("alert channels of other types can be added, and show no secrets", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Alerts", slug: `alerts-${Date.now()}` } })
+  ).json();
+  const key = { authorization: `Bearer ${workspace.apiKey}` };
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "alerts@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Alerts");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  await page.getByRole("link", { name: "Alerts" }).first().click();
+  await page.getByRole("button", { name: "New channel" }).click();
+  await page.getByRole("combobox", { name: "Send alerts to" }).click();
+  await page.getByRole("option", { name: "Telegram" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("My phone");
+  await page.getByLabel("Bot token").fill("123456789:AAEhBP0av18ZZ-fake_token_value_1234");
+  await page.getByLabel("Chat ID").fill("me");
+  await page.getByRole("button", { name: "Add channel" }).click();
+  await expect(page.getByText("Must be a numeric chat id or @channelusername")).toBeVisible();
+  await page.getByLabel("Chat ID").fill("-1001234567890");
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Add channel" }).click();
+  await expect(page.getByText("Telegram · chat -1001234567890")).toBeVisible();
+
+  await page.getByRole("button", { name: "New channel" }).click();
+  await page.getByRole("combobox", { name: "Send alerts to" }).click();
+  await page.getByRole("option", { name: "ntfy" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Push");
+  await page.getByLabel("Server").fill("https://ntfy.example.com");
+  await page.getByLabel("Topic").fill("hidden-topic");
+  await page.getByRole("combobox", { name: "Priority" }).click();
+  await page.getByRole("option", { name: "5 · Urgent" }).click();
+  await page.getByRole("button", { name: "Add channel" }).click();
+  await expect(page.getByText("ntfy · ntfy.example.com/••••••••")).toBeVisible();
+
+  const listed = await (await request.get("/api/v1/channels", { headers: key })).text();
+  expect(listed).not.toContain("AAEhBP0av18ZZ");
+  expect(listed).not.toContain("hidden-topic");
+  await expectAccessible(page);
+});

@@ -1,6 +1,6 @@
 import { Result } from "better-result";
-import type { ChannelInput, ChannelPatch } from "@tiny-uptime/contracts";
-import type { Channel } from "../../domain/channel";
+import { ChannelInput, validate, type ChannelPatch } from "@tiny-uptime/contracts";
+import { channelToInput, type Channel } from "../../domain/channel";
 import { testAlert } from "../../domain/incident";
 import { Invalid, NotFound, type DeliveryFailed } from "../../errors";
 import type { WorkspaceDeps } from "./deps";
@@ -10,18 +10,23 @@ export function listChannels(d: WorkspaceDeps): Channel[] {
 }
 
 export function createChannel(d: WorkspaceDeps, input: ChannelInput): Channel {
-  const channel: Channel = { id: d.ids.id(), ...input, createdAt: d.clock.now() };
+  const channel = { id: d.ids.id(), ...input, createdAt: d.clock.now() } as Channel;
   d.channels.insert(channel);
   return channel;
 }
 
+/**
+ * Applies the changed fields on top of the stored settings and validates the result against the channel's type.
+ * Secrets the API never shows (a webhook URL, a bot token) stay as stored unless the patch sends a new value.
+ */
 export function updateChannel(d: WorkspaceDeps, id: string, patch: ChannelPatch): Result<Channel, NotFound | Invalid> {
   return Result.gen(function* () {
     const current = yield* getChannel(d, id);
     if (patch.type !== undefined && patch.type !== current.type)
       return Result.err(new Invalid({ field: "type", message: "type: cannot be changed" }));
-    const { type: _type, ...changes } = patch;
-    const updated: Channel = { ...current, ...definedOnly(changes) };
+    const parsed = validate(ChannelInput, { ...channelToInput(current), ...definedOnly(patch), type: current.type });
+    if (!parsed.ok) return Result.err(new Invalid({ field: parsed.field, message: parsed.message }));
+    const updated = { id: current.id, ...parsed.value, createdAt: current.createdAt } as Channel;
     d.channels.save(updated);
     return Result.ok(updated);
   });

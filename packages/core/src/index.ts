@@ -3,6 +3,7 @@ export * from "./domain/access";
 export * from "./domain/api-key";
 export * from "./domain/auth/totp";
 export * from "./domain/auth/user";
+export * from "./domain/alert-message";
 export * from "./domain/channel";
 export * from "./domain/incident";
 export * from "./domain/maintenance";
