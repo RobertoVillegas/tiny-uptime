@@ -58,11 +58,11 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 
 - Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, alert channels of every type with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
-- MCP server at `/api/mcp` (Streamable HTTP, stateless JSON): tools to read and change monitors, incidents, maintenance windows, channels and status pages. Clients sign in with OAuth: the server publishes its metadata (RFC 9728, RFC 8414), accepts dynamic client registration, and asks the signed-in user which workspace and what access to grant (read only, or read and change up to their role). Access tokens last an hour; refresh tokens rotate, and a replayed one revokes the connection. Connected apps are listed, and can be disconnected, on the account page. An API key works too:
+- MCP server at `/mcp` (Streamable HTTP, stateless JSON): tools to read and change monitors, incidents, maintenance windows, channels and status pages. Clients sign in with OAuth: the server publishes its metadata (RFC 9728, RFC 8414), accepts dynamic client registration, and asks the signed-in user which workspace and what access to grant (read only, or read and change up to their role). Access tokens last an hour; refresh tokens rotate, and a replayed one revokes the connection. Connected apps are listed, and can be disconnected, on the account page. An API key works too:
 
   ```sh
-  claude mcp add --transport http tiny-uptime https://<host>/api/mcp                                  # OAuth
-  claude mcp add --transport http tiny-uptime https://<host>/api/mcp --header "Authorization: Bearer tu_…"
+  claude mcp add --transport http tiny-uptime https://<host>/mcp                                  # OAuth
+  claude mcp add --transport http tiny-uptime https://<host>/mcp --header "Authorization: Bearer tu_…"
   ```
 
 Next: import from OpenUptime, multi-region checks. The goal is feature parity with OpenUptime.

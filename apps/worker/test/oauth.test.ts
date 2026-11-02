@@ -62,7 +62,7 @@ function authorizeQuery(clientId: string, challenge: string, extra: Record<strin
     code_challenge: challenge,
     code_challenge_method: "S256",
     state: "xyz",
-    resource: `${ORIGIN}/api/mcp`,
+    resource: `${ORIGIN}/mcp`,
     ...extra,
   });
 }
@@ -85,7 +85,7 @@ async function tokenRequest(form: Record<string, string>) {
 }
 
 async function mcp(token: string, method: string, params?: unknown) {
-  const res = await fetchWorker("/api/mcp", {
+  const res = await fetchWorker("/mcp", {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, ...(params ? { params } : {}) }),
@@ -112,8 +112,8 @@ async function connect(cookie: string, workspaceId: string, scope = "mcp:read mc
 
 describe("OAuth for MCP clients", () => {
   it("publishes discovery metadata and points unauthenticated MCP calls at it", async () => {
-    const resource = (await (await fetchWorker("/.well-known/oauth-protected-resource/api/mcp")).json()) as any;
-    expect(resource).toMatchObject({ resource: `${ORIGIN}/api/mcp`, authorization_servers: [ORIGIN] });
+    const resource = (await (await fetchWorker("/.well-known/oauth-protected-resource/mcp")).json()) as any;
+    expect(resource).toMatchObject({ resource: `${ORIGIN}/mcp`, authorization_servers: [ORIGIN] });
     const server = (await (await fetchWorker("/.well-known/oauth-authorization-server")).json()) as any;
     expect(server).toMatchObject({
       issuer: ORIGIN,
@@ -123,9 +123,7 @@ describe("OAuth for MCP clients", () => {
 
     const anonymous = await mcp("", "ping");
     expect(anonymous.status).toBe(401);
-    expect(anonymous.headers.get("www-authenticate")).toContain(
-      `resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource/api/mcp"`,
-    );
+    expect(anonymous.headers.get("www-authenticate")).toContain(`resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource/mcp"`);
     expect((await mcp(`tuat_${"0".repeat(64)}`, "ping")).headers.get("www-authenticate")).toContain('error="invalid_token"');
   });
 

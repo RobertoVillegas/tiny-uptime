@@ -312,7 +312,7 @@ function ConnectedAppsSection() {
       description={
         list.length
           ? "MCP clients you signed in to tiny-uptime. Disconnecting ends their access at once."
-          : "MCP clients you sign in with OAuth show up here, at /api/mcp on this site."
+          : "MCP clients you sign in with OAuth show up here, at /mcp on this site."
       }
     >
       {list.length ? (

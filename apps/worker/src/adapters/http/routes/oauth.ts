@@ -13,7 +13,7 @@ import { accountRoute } from "./auth-route";
 export function oauthRoutes(router: Router): void {
   router
     .get("/.well-known/oauth-protected-resource", (c) => cors(json(200, resourceMetadata(c.url))))
-    .get("/.well-known/oauth-protected-resource/api/mcp", (c) => cors(json(200, resourceMetadata(c.url))))
+    .get("/.well-known/oauth-protected-resource/mcp", (c) => cors(json(200, resourceMetadata(c.url))))
     .get("/.well-known/oauth-authorization-server", (c) => cors(json(200, serverMetadata(c.url))))
     .post("/oauth/register", register)
     .get("/oauth/authorize", authorizePage)
@@ -30,7 +30,7 @@ export function oauthRoutes(router: Router): void {
     );
   for (const path of [
     "/.well-known/oauth-protected-resource",
-    "/.well-known/oauth-protected-resource/api/mcp",
+    "/.well-known/oauth-protected-resource/mcp",
     "/.well-known/oauth-authorization-server",
     "/oauth/register",
     "/oauth/token",
@@ -41,11 +41,11 @@ export function oauthRoutes(router: Router): void {
 }
 
 export function mcpResource(url: URL): string {
-  return `${url.origin}/api/mcp`;
+  return `${url.origin}/mcp`;
 }
 
 export function resourceMetadataUrl(url: URL): string {
-  return `${url.origin}/.well-known/oauth-protected-resource/api/mcp`;
+  return `${url.origin}/.well-known/oauth-protected-resource/mcp`;
 }
 
 function resourceMetadata(url: URL) {

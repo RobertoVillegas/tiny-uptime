@@ -348,7 +348,7 @@ test("an MCP client is connected through the consent page and can be disconnecte
   await page.getByRole("button", { name: "Disconnect" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Disconnect" }).click();
   await expect(page.getByText("App disconnected")).toBeVisible();
-  const ping = await request.post("/api/mcp", {
+  const ping = await request.post("/mcp", {
     headers: { authorization: `Bearer ${tokens.access_token}` },
     data: { jsonrpc: "2.0", id: 1, method: "ping" },
   });

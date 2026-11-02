@@ -19,7 +19,7 @@ const ACCESS_TOKEN = /^tuat_[0-9a-f]{64}$/;
  */
 export function mcpRoutes(router: Router): void {
   router
-    .post("/api/mcp", async (c) => {
+    .post("/mcp", async (c) => {
       const origin = c.request.headers.get("origin");
       if (origin && origin !== c.url.origin) return failWith(403, "forbidden", "cross-origin request refused");
       const caller = await resolveCaller(c);
@@ -30,8 +30,8 @@ export function mcpRoutes(router: Router): void {
       const answer = await handleMessage(body.value, TOOLS, { workspace, principal: caller.principal, origin: c.url.origin });
       return answer ? json(200, answer) : new Response(null, { status: 202 });
     })
-    .get("/api/mcp", () => new Response(null, { status: 405, headers: { allow: "POST" } }))
-    .delete("/api/mcp", () => new Response(null, { status: 405, headers: { allow: "POST" } }));
+    .get("/mcp", () => new Response(null, { status: 405, headers: { allow: "POST" } }))
+    .delete("/mcp", () => new Response(null, { status: 405, headers: { allow: "POST" } }));
 }
 
 async function resolveCaller(c: Ctx): Promise<{ workspaceId: string; principal: Principal } | { challenge: Response }> {

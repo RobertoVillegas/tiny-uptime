@@ -17,7 +17,7 @@ async function workspace() {
 let next = 1;
 async function rpc(key: string, method: string, params?: unknown, headers: Record<string, string> = {}) {
   const res = await exports.default.fetch(
-    new Request(`${BASE}/api/mcp`, {
+    new Request(`${BASE}/mcp`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${key}`,
@@ -84,7 +84,7 @@ describe("MCP server", () => {
   it("answers notifications with 202 and refuses other origins, other methods and missing keys", async () => {
     const ws = await workspace();
     const note = await exports.default.fetch(
-      new Request(`${BASE}/api/mcp`, {
+      new Request(`${BASE}/mcp`, {
         method: "POST",
         headers: { authorization: `Bearer ${ws.apiKey}`, "content-type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
@@ -92,11 +92,11 @@ describe("MCP server", () => {
     );
     expect(note.status).toBe(202);
     expect((await rpc(ws.apiKey, "ping", undefined, { origin: "https://evil.test" })).status).toBe(403);
-    expect((await exports.default.fetch(`${BASE}/api/mcp`)).status).toBe(405);
+    expect((await exports.default.fetch(`${BASE}/mcp`)).status).toBe(405);
     expect((await rpc("", "ping")).status).toBe(401);
 
     const garbage = await exports.default.fetch(
-      new Request(`${BASE}/api/mcp`, { method: "POST", headers: { authorization: `Bearer ${ws.apiKey}` }, body: "{" }),
+      new Request(`${BASE}/mcp`, { method: "POST", headers: { authorization: `Bearer ${ws.apiKey}` }, body: "{" }),
     );
     expect(((await garbage.json()) as any).error.code).toBe(-32700);
   });
