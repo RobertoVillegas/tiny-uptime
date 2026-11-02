@@ -1,12 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import type { Incident } from "@tiny-uptime/contracts";
+import { Button } from "@tiny-uptime/ui/components/button";
 import { StatusDot } from "@tiny-uptime/ui/components/status";
 import { EmptyState, Skeleton } from "@tiny-uptime/ui/components/surface";
-import { CircleCheck } from "lucide-react";
+import { notify } from "@tiny-uptime/ui/components/toast";
+import { Check, CircleCheck } from "lucide-react";
+import { api, currentWorkspaceId } from "../../lib/api";
 import { dateTime, duration } from "../../lib/format";
 import { incidentsQuery } from "../../lib/queries";
+import { authedRoute } from "../../router";
 
-/** Incidents newest first: ongoing ones say so, resolved ones say how long they lasted. */
+/** Incidents newest first: ongoing ones say so and can be acknowledged, resolved ones say how long they lasted. */
 export function IncidentList({
   monitorId,
   emptyText,
@@ -17,6 +22,8 @@ export function IncidentList({
   showMonitor?: boolean;
 }) {
   const incidents = useQuery(incidentsQuery(monitorId));
+  const { me } = authedRoute.useRouteContext();
+  const canWrite = me.memberships.find((m) => m.workspaceId === currentWorkspaceId())?.role !== "viewer";
   if (incidents.isPending) {
     return (
       <div className="flex flex-col gap-3 p-5" aria-busy>
@@ -30,25 +37,51 @@ export function IncidentList({
   return (
     <ul className="divide-y divide-border">
       {list.map((i) => (
-        <li key={i.id} className="flex items-start gap-3 px-5 py-3.5">
-          <StatusDot status={i.resolvedAt ? "up" : "down"} className="mt-1.5" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <p className="font-medium">
-              {showMonitor ? (
-                <Link to="/monitors/$monitorId" params={{ monitorId: i.monitorId }} className="hover:underline hover:underline-offset-4">
-                  {i.monitorName ?? "Deleted monitor"}
-                </Link>
-              ) : null}
-              {showMonitor ? <span className="font-normal text-muted-foreground"> · </span> : null}
-              <span className={showMonitor ? "font-normal" : ""}>{i.cause}</span>
-            </p>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              {dateTime(i.startedAt)} ·{" "}
-              {i.resolvedAt ? `resolved after ${duration(i.startedAt, i.resolvedAt)}` : `ongoing for ${duration(i.startedAt, null)}`}
-            </p>
-          </div>
-        </li>
+        <IncidentRow key={i.id} incident={i} showMonitor={showMonitor} canAcknowledge={canWrite} />
       ))}
     </ul>
+  );
+}
+
+function IncidentRow({ incident: i, showMonitor, canAcknowledge }: { incident: Incident; showMonitor: boolean; canAcknowledge: boolean }) {
+  const queryClient = useQueryClient();
+  const acknowledge = useMutation({
+    mutationFn: () => api.incidents.acknowledge(i.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === currentWorkspaceId() && q.queryKey[1] === "incidents" });
+      notify("Acknowledged", { description: "Reminders and escalation stop for this incident.", type: "success" });
+    },
+  });
+  const open = i.resolvedAt === null;
+  return (
+    <li className="flex flex-wrap items-start gap-3 px-5 py-3.5">
+      <StatusDot status={open ? (i.kind === "slow" ? "degraded" : "down") : "up"} className="mt-1.5" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="font-medium">
+          {showMonitor ? (
+            <>
+              <Link to="/monitors/$monitorId" params={{ monitorId: i.monitorId }} className="hover:underline hover:underline-offset-4">
+                {i.monitorName ?? "Deleted monitor"}
+              </Link>
+              <span className="font-normal text-muted-foreground"> · </span>
+            </>
+          ) : null}
+          {i.kind === "slow" ? <span className="mr-1.5 rounded-full bg-subtle px-1.5 py-px text-[0.75rem] font-medium">Slow</span> : null}
+          <span className={showMonitor ? "font-normal" : ""}>{i.cause}</span>
+        </p>
+        <p className="text-[0.8125rem] text-muted-foreground">
+          {dateTime(i.startedAt)} ·{" "}
+          {open ? `ongoing for ${duration(i.startedAt, null)}` : `resolved after ${duration(i.startedAt, i.resolvedAt)}`}
+          {i.acknowledgedAt ? " · acknowledged" : ""}
+          {i.notified ? "" : " · not alerted, its dependency was down"}
+        </p>
+      </div>
+      {open && !i.acknowledgedAt && i.notified && canAcknowledge ? (
+        <Button size="sm" loading={acknowledge.isPending} onClick={() => acknowledge.mutate()}>
+          <Check />
+          Acknowledge
+        </Button>
+      ) : null}
+    </li>
   );
 }

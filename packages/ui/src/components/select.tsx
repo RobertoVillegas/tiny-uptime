@@ -12,7 +12,13 @@ export function Select<T extends string>({
   options,
   id,
   disabled,
+  label,
+  labelTrigger = false,
 }: {
+  /** Names the list of options for screen readers. */
+  label: string;
+  /** Also names the button, for selects without a visible label. */
+  labelTrigger?: boolean;
   value: T;
   onValueChange: (value: T) => void;
   options: readonly Option<T>[];
@@ -26,7 +32,11 @@ export function Select<T extends string>({
       {...(disabled !== undefined ? { disabled } : {})}
       items={options as Option<T>[]}
     >
-      <SelectPrimitive.Trigger {...(id ? { id } : {})} className={cn(inputClass, "flex items-center justify-between gap-2 text-left")}>
+      <SelectPrimitive.Trigger
+        {...(id ? { id } : {})}
+        {...(labelTrigger ? { "aria-label": label } : {})}
+        className={cn(inputClass, "flex items-center justify-between gap-2 text-left")}
+      >
         <SelectPrimitive.Value />
         <SelectPrimitive.Icon>
           <ChevronsUpDown className="size-3.5 text-muted-foreground" />
@@ -40,7 +50,7 @@ export function Select<T extends string>({
               "transition-[opacity,scale] duration-150 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
             )}
           >
-            <SelectPrimitive.List>
+            <SelectPrimitive.List aria-label={label}>
               {options.map((option) => (
                 <SelectPrimitive.Item
                   key={option.value}

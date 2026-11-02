@@ -14,6 +14,7 @@ import { api, messageOf } from "../../lib/api";
 import { firstError } from "../../lib/forms";
 import { channelsQuery } from "../../lib/queries";
 import { PageHeader } from "../shell/page-header";
+import { AlertPolicySection } from "./alert-policy-section";
 
 export function ChannelsPage() {
   const channels = useQuery(channelsQuery());
@@ -63,6 +64,9 @@ export function ChannelsPage() {
           </ul>
         )}
       </Section>
+      <div className="mt-6">
+        <AlertPolicySection />
+      </div>
     </>
   );
 }

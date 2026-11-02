@@ -8,6 +8,7 @@ import { Switch } from "@tiny-uptime/ui/components/switch";
 import { cn } from "cn";
 import { useState } from "react";
 import { ApiError, messageOf } from "../../lib/api";
+import { AlertRulesFields, initialRules, RULE_FIELDS, rulesToDraft, type AlertRules } from "./alert-rules";
 
 const TYPES: { value: MonitorType; label: string }[] = [
   { value: "http", label: "Website or API (HTTP)" },
@@ -104,7 +105,9 @@ function toDraft(v: Values): MonitorDraft {
 }
 
 /** Server and schema field names, mapped to the input that shows the error. */
-function fieldOf(field: string): keyof Values {
+function fieldOf(field: string): keyof Values | keyof AlertRules {
+  const rule = RULE_FIELDS.find((f) => field === f || field.startsWith(`${f}.`));
+  if (rule) return rule;
   if (field.startsWith("headers")) return "headers";
   if (field.startsWith("expectedStatus")) return "expectedStatus";
   if (field.startsWith("keyword")) return "keyword";
@@ -115,13 +118,14 @@ function fieldOf(field: string): keyof Values {
 type Props = { monitor?: Monitor; submitLabel: string; onSubmit: (draft: MonitorDraft) => Promise<unknown>; onCancel: () => void };
 
 export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props) {
-  const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Values | keyof AlertRules, string>>>({});
+  const [rules, setRules] = useState(() => initialRules(monitor));
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm({
     defaultValues: initialValues(monitor),
     onSubmit: async ({ value }) => {
       setFormError(null);
-      const draft = toDraft(value);
+      const draft = { ...toDraft(value), ...rulesToDraft(rules) } as MonitorDraft;
       const checked = validate(MonitorInput, draft);
       if (!checked.ok) {
         setErrors({ [fieldOf(checked.field)]: tidy(checked.message, checked.field) });
@@ -171,7 +175,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
         <form.Field name="type">
           {(field) => (
             <Field label="What to monitor">
-              <Select value={field.state.value} onValueChange={(v) => field.handleChange(v)} options={TYPES} />
+              <Select label="What to monitor" value={field.state.value} onValueChange={(v) => field.handleChange(v)} options={TYPES} />
             </Field>
           )}
         </form.Field>
@@ -186,6 +190,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
               {(field) => (
                 <Field label="Method">
                   <Select
+                    label="Method"
                     value={field.state.value}
                     onValueChange={(v) => field.handleChange(v)}
                     options={HTTP_METHODS.map((m) => ({ value: m, label: m }))}
@@ -205,6 +210,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
               {(field) => (
                 <Field label="Keyword must be">
                   <Select
+                    label="Keyword must be"
                     value={field.state.value}
                     onValueChange={(v) => field.handleChange(v)}
                     options={[
@@ -258,7 +264,12 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
         <form.Field name="intervalSec">
           {(field) => (
             <Field label={type === "heartbeat" ? "Expected every" : "Check"}>
-              <Select value={field.state.value} onValueChange={(v) => field.handleChange(v)} options={INTERVALS} />
+              <Select
+                label={type === "heartbeat" ? "Expected every" : "Check"}
+                value={field.state.value}
+                onValueChange={(v) => field.handleChange(v)}
+                options={INTERVALS}
+              />
             </Field>
           )}
         </form.Field>
@@ -266,6 +277,14 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
           ? text("graceSec", "Grace period (seconds)", { inputMode: "numeric", description: "Extra time before a missed ping counts." })
           : text("timeoutSec", "Timeout (seconds)", { inputMode: "decimal" })}
       </div>
+
+      <AlertRulesFields
+        value={rules}
+        onChange={setRules}
+        errors={errors}
+        {...(monitor ? { monitorId: monitor.id } : {})}
+        heartbeat={type === "heartbeat"}
+      />
 
       <form.Field name="public">
         {(field) => (

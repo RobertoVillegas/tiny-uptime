@@ -20,13 +20,16 @@ export function MonitorsPage() {
   const [creating, setCreating] = useState(false);
   const create = useCreateMonitor();
   const navigate = useNavigate();
-  const list = monitors.data ?? [];
+  const [tag, setTag] = useState<string | null>(null);
+  const all = monitors.data ?? [];
+  const tags = [...new Set(all.flatMap((m) => m.tags))].toSorted();
+  const list = tag ? all.filter((m) => m.tags.includes(tag)) : all;
 
   return (
     <>
       <PageHeader
         title="Monitors"
-        description={monitors.data ? summary(list) : " "}
+        description={monitors.data ? summary(all) : " "}
         actions={
           <Button variant="primary" onClick={() => setCreating(true)}>
             <Plus />
@@ -52,6 +55,21 @@ export function MonitorsPage() {
         />
       </Dialog>
 
+      {tags.length ? (
+        <div role="group" aria-label="Filter by tag" className="mb-3 flex flex-wrap gap-1.5">
+          {[null, ...tags].map((t) => (
+            <button
+              key={t ?? "all"}
+              type="button"
+              aria-pressed={tag === t}
+              onClick={() => setTag(t)}
+              className="h-7 rounded-full border border-border px-3 text-[0.8125rem] text-muted-foreground transition-colors duration-150 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground max-sm:h-9"
+            >
+              {t ?? "All"}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <Section>
         {monitors.isPending ? (
           <ListSkeleton />
@@ -93,6 +111,7 @@ function MonitorRow({ monitor: m }: { monitor: Monitor }) {
           <span className="truncate text-[0.8125rem] text-muted-foreground">
             {typeLabel(m.type)}
             {targetOf(m) ? ` · ${targetOf(m)}` : ""}
+            {m.tags.length ? ` · ${m.tags.join(", ")}` : ""}
           </span>
         </span>
         <StatusBadge status={m.status} className="hidden sm:inline-flex" />

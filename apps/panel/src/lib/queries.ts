@@ -22,3 +22,6 @@ export const channelsQuery = () => queryOptions({ queryKey: [ws(), "channels"], 
 export const apiKeysQuery = () => queryOptions({ queryKey: [ws(), "api-keys"], queryFn: () => api.apiKeys.list() });
 export const membersQuery = (workspaceId: string) =>
   queryOptions({ queryKey: [workspaceId, "members"], queryFn: () => api.members.list(workspaceId) });
+export const maintenanceQuery = () =>
+  queryOptions({ queryKey: [ws(), "maintenance"], queryFn: () => api.maintenance.list(), refetchInterval: 60_000 });
+export const alertPolicyQuery = () => queryOptions({ queryKey: [ws(), "alert-policy"], queryFn: () => api.alertPolicy.get() });

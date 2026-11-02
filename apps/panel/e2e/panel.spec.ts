@@ -19,6 +19,9 @@ async function addAuthenticator(page: Page) {
   });
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+const local = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
 async function expectAccessible(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
@@ -93,4 +96,61 @@ test("signed-out visitors are sent to sign in, and the panel cannot be framed", 
   expect(res?.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/app/login");
+});
+
+test("alert rules, maintenance and follow-ups can be set from the panel", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Ops", slug: `ops-${Date.now()}` } })
+  ).json();
+  const key = { authorization: `Bearer ${workspace.apiKey}` };
+  await request.post("/api/v1/channels", { headers: key, data: { type: "webhook", name: "Pager", url: "https://example.com/hook" } });
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "ops@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Ops");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  // A heartbeat with stricter rules, a tag and a routed channel.
+  await page.getByRole("button", { name: "New monitor" }).click();
+  await page.getByRole("combobox", { name: "What to monitor" }).click();
+  await page.getByRole("option", { name: /Heartbeat/ }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Backups");
+  await page.getByRole("button", { name: /Alert rules/ }).click();
+  await page.getByLabel("Down after").fill("3");
+  await page.getByLabel("Tags").fill("nightly, storage");
+  await page.getByRole("checkbox", { name: "Pager" }).click();
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Create monitor" }).click();
+  await expect(page.getByRole("heading", { name: "Backups" })).toBeVisible();
+  const monitors = await (await request.get("/api/v1/monitors", { headers: key })).json();
+  expect(monitors[0]).toMatchObject({ failureThreshold: 3, tags: ["nightly", "storage"] });
+  expect(monitors[0].channelIds).toHaveLength(1);
+
+  // Tag filter on the list.
+  await page.getByRole("link", { name: "Monitors" }).first().click();
+  await expect(page.getByRole("button", { name: "nightly" })).toBeVisible();
+
+  // Maintenance that is in progress now.
+  await page.getByRole("link", { name: "Maintenance" }).first().click();
+  await expect(page.getByText("Nothing scheduled")).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole("button", { name: "Schedule maintenance" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Storage migration");
+  await page.getByLabel("Starts").fill(local(new Date(Date.now() - 10 * 60_000)));
+  await page.getByLabel("Ends").fill(local(new Date(Date.now() + 60 * 60_000)));
+  await page.getByRole("button", { name: "Schedule", exact: true }).click();
+  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+
+  // Follow-ups on the alerts page.
+  await page.getByRole("link", { name: "Alerts" }).first().click();
+  await page.getByRole("combobox", { name: "Remind" }).click();
+  await page.getByRole("option", { name: "Every 30 minutes" }).click();
+  await expect(page.getByRole("listbox")).toBeHidden();
+  await page.getByRole("button", { name: "Save follow-ups" }).click();
+  await expect(page.getByText("Follow-up rules saved")).toBeVisible();
+  expect((await (await request.get("/api/v1/alert-policy", { headers: key })).json()).reminderEveryMinutes).toBe(30);
+  await expectAccessible(page);
 });

@@ -49,7 +49,13 @@ export function MembersSection({ workspaceId, canManage, myUserId }: { workspace
               {canManage && m.userId !== myUserId ? (
                 <>
                   <div className="w-32">
-                    <Select value={m.role} onValueChange={(role) => setRole.mutate({ userId: m.userId, role })} options={ROLE_OPTIONS} />
+                    <Select
+                      label={`Role for ${m.name}`}
+                      labelTrigger
+                      value={m.role}
+                      onValueChange={(role) => setRole.mutate({ userId: m.userId, role })}
+                      options={ROLE_OPTIONS}
+                    />
                   </div>
                   <ConfirmDialog
                     trigger={
@@ -139,7 +145,7 @@ function InviteDialog({ workspaceId, onInvited }: { workspaceId: string; onInvit
             <Input type="email" autoFocus autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Role" description={ROLE_HELP[role]}>
-            <Select value={role} onValueChange={setRole} options={ROLE_OPTIONS} />
+            <Select label="Role" value={role} onValueChange={setRole} options={ROLE_OPTIONS} />
           </Field>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => close(false)}>

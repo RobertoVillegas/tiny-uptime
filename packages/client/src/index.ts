@@ -1,4 +1,5 @@
 import type {
+  AlertPolicy,
   ApiKey,
   Channel,
   ChannelDraft,
@@ -6,6 +7,8 @@ import type {
   CreatedApiKey,
   Incident,
   InviteInfo,
+  Maintenance,
+  MaintenanceDraft,
   Me,
   Member,
   Membership,
@@ -64,7 +67,8 @@ export function createClient(t: Transport) {
       remove: (workspaceId: string, userId: string) => del<{ ok: true }>(`/auth/workspaces/${workspaceId}/members/${userId}`),
     },
     monitors: {
-      list: () => get<Monitor[]>("/api/v1/monitors"),
+      list: (filter: { tag?: string } = {}) =>
+        get<Monitor[]>(`/api/v1/monitors${filter.tag ? `?tag=${encodeURIComponent(filter.tag)}` : ""}`),
       get: (id: string) => get<Monitor>(`/api/v1/monitors/${id}`),
       create: (draft: MonitorDraft) => post<Monitor>("/api/v1/monitors", draft),
       update: (id: string, changes: MonitorPatch) => patch<Monitor>(`/api/v1/monitors/${id}`, changes),
@@ -76,6 +80,17 @@ export function createClient(t: Transport) {
         const params = new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)]));
         return get<Incident[]>(`/api/v1/incidents${params.size ? `?${params}` : ""}`);
       },
+      acknowledge: (id: string) => post<{ ok: true }>(`/api/v1/incidents/${id}/acknowledge`),
+    },
+    maintenance: {
+      list: () => get<Maintenance[]>("/api/v1/maintenance"),
+      create: (draft: MaintenanceDraft) => post<Maintenance>("/api/v1/maintenance", draft),
+      update: (id: string, draft: MaintenanceDraft) => patch<Maintenance>(`/api/v1/maintenance/${id}`, draft),
+      remove: (id: string) => del(`/api/v1/maintenance/${id}`),
+    },
+    alertPolicy: {
+      get: () => get<AlertPolicy>("/api/v1/alert-policy"),
+      set: (policy: AlertPolicy) => patch<AlertPolicy>("/api/v1/alert-policy", policy),
     },
     channels: {
       list: () => get<Channel[]>("/api/v1/channels"),
