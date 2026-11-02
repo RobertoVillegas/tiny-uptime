@@ -165,10 +165,31 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 4.1.12
+        version: 4.1.12(vite@8.3.5(esbuild@0.28.2))
+
+  apps/worker:
     dependencies:
       '@passwordless-id/webauthn':
         specifier: 2.4.1
         version: 2.4.1
+      '@tiny-uptime/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@tiny-uptime/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      better-result:
+        specifier: 3.0.1
+        version: 3.0.1
+      valibot:
+        specifier: 1.5.0
+        version: 1.5.0(typescript@5.9.3)
     devDependencies:
       '@cloudflare/vitest-plugin':
         specifier: 1.4.4
@@ -176,15 +197,24 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261010.1
         version: 5.20261010.1
-      typescript:
-        specifier: ~5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: 4.1.12
-        version: 4.1.12(vite@8.3.5(esbuild@0.28.2))
       wrangler:
         specifier: 4.149.0
         version: 4.149.0(@cloudflare/workers-types@5.20261010.1)
+
+  packages/contracts:
+    dependencies:
+      valibot:
+        specifier: 1.5.0
+        version: 1.5.0(typescript@5.9.3)
+
+  packages/core:
+    dependencies:
+      '@tiny-uptime/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      better-result:
+        specifier: 3.0.1
+        version: 3.0.1
 
 packages:
 
@@ -770,6 +800,9 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
+  better-result@3.0.1:
+    resolution: {integrity: sha512-rnCeqEXkKPHmz5MO5ZroPRDyHe4YvlNPyy7qj8cVcWs/GnvSvC3086G74/220W+wWcIWlXgzvcjskFV0A4blUQ==}
+
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
 
@@ -1003,6 +1036,14 @@ packages:
 
   unenv@2.0.0-rc.24:
     resolution: {integrity: sha512-i7qRCmY42zmCwnYlh9H2SvLEypEFGye5iRmEMKjcGi7zk9UquigRjFtTLz0TYqr0ZGLZhaMHl/foy1bZR+Cwlw==}
+
+  valibot@1.5.0:
+    resolution: {integrity: sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   vite@8.3.5:
     resolution: {integrity: sha512-z1YpjieJ9g0ebTmQpLBv/oq9E3F9EIlOe+7LahW8SrE3LTiG3udBRUXQOlYXP9b+IC2q2phHeVxj9xGlw34OEQ==}
@@ -1529,6 +1570,8 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
+  better-result@3.0.1: {}
+
   blake3-wasm@2.1.5: {}
 
   chai@6.3.0: {}
@@ -1772,6 +1815,10 @@ snapshots:
   unenv@2.0.0-rc.24:
     dependencies:
       pathe: 2.0.3
+
+  valibot@1.5.0(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   vite@8.3.5(esbuild@0.28.2):
     dependencies:

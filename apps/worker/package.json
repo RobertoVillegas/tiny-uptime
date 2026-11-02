@@ -1,0 +1,24 @@
+{
+  "name": "@tiny-uptime/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test",
+    "test": "vitest run",
+    "budget": "node scripts/budget.mjs"
+  },
+  "dependencies": {
+    "@passwordless-id/webauthn": "2.4.1",
+    "@tiny-uptime/contracts": "workspace:*",
+    "@tiny-uptime/core": "workspace:*",
+    "better-result": "3.0.1",
+    "valibot": "1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.4",
+    "@cloudflare/workers-types": "5.20261010.1",
+    "wrangler": "4.149.0"
+  }
+}

@@ -2,7 +2,24 @@
 
 An uptime monitor that runs entirely on Cloudflare's free plan and stays far below its 10 ms CPU limit per request.
 
-A Worker serves the public status page, heartbeats and the REST API. Each workspace is a Durable Object with its own SQLite database: it stores the monitors, runs their checks from an alarm set to the next one due, and sends alerts. A second Durable Object, the directory, only maps status page slugs to workspaces. There is no cron scan, external database, ORM or web framework.
+A Worker serves the public status page, heartbeats, the REST API and sign-in. Each workspace is a Durable Object with its own SQLite database: it stores the monitors, runs their checks from an alarm set to the next one due, and sends alerts. An `AuthStore` Durable Object keeps accounts, passkeys and sessions, and a directory maps status page slugs to workspaces. There is no cron scan, external database, ORM or web framework.
+
+## Layout
+
+```
+packages/contracts   API schemas (Valibot) and response types, shared by the worker and future clients
+packages/core        domain rules and use cases; no Cloudflare APIs
+  domain/            pure rules: monitor state machine, schedule, incidents, roles, TOTP
+  application/       use cases, one file per area, depending on ports
+  ports/             interfaces the use cases need: repositories, checker, notifier, clock
+apps/worker          the Cloudflare side
+  adapters/          SQLite repositories, checks (HTTP, TCP, Minecraft), webhook, passkeys, HTTP routes
+  runtime/           Worker entry and Durable Objects: wire adapters to use cases, nothing else
+```
+
+Dependencies point inward: `domain` imports nothing, `application` imports `domain` and `ports`, and only `apps/worker` knows about Cloudflare. Use cases return `Result` values from [better-result](https://github.com/dmmulroy/better-result) with tagged errors; `apps/worker/src/adapters/http/respond.ts` is the one place an error becomes an HTTP status. Input is validated with Valibot schemas from `contracts`.
+
+Tests follow the layers: `packages/core/test` checks the domain rules in plain Node, and `apps/worker/test` drives the real Worker and Durable Objects through HTTP, including passkey sign-in with a software authenticator.
 
 ## Budget
 
@@ -10,8 +27,8 @@ These are enforced by `pnpm budget` in CI:
 
 | | Budget | Now |
 | --- | --- | --- |
-| Worker bundle (gzip) | 100 KiB | 14 KiB |
-| Startup CPU (local profile, median of 3) | 10 ms | ~0 ms |
+| Worker bundle (gzip, minified) | 100 KiB | 40 KiB |
+| Startup CPU (local profile, median of 3) | 10 ms | ~5 ms |
 
 Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per status page, 2–4 ms per round of checks.
 
@@ -22,21 +39,22 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 - Monitors: HTTP (method, headers, body, expected status codes, keyword present or absent), TCP, Minecraft server list ping, heartbeat with a grace period.
 - A monitor is reported down after two failures in a row; a failed check is retried after 20 seconds. Each monitor checks at a fixed offset inside its interval, so monitors spread out instead of firing together.
 - Incidents open and resolve with the monitor's status; alerts go to webhook channels in OpenUptime's webhook format, with retries.
+- Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
 - Public status page per workspace at `/s/<slug>` (and `/` for `PUBLIC_SLUG`), JSON at `/api/public/<slug>`. Only monitors marked `public` appear.
 
-Next: the private panel and sign-in, an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
+Next: the private panel, an MCP server, more monitor types and channels, 90-day history on the status page, maintenance windows. The goal is feature parity with OpenUptime.
 
 ## Run
 
 ```bash
 pnpm install
-echo 'ADMIN_TOKEN=local-dev-token' > .dev.vars
+echo 'ADMIN_TOKEN=local-dev-token' > apps/worker/.dev.vars
 pnpm dev
 pnpm test
 pnpm budget
 ```
 
-Deploy with `pnpm deploy`, then set the operator token with `pnpm exec wrangler secret put ADMIN_TOKEN`.
+Deploy with `pnpm deploy`, then set the operator token with `pnpm --filter @tiny-uptime/worker exec wrangler secret put ADMIN_TOKEN`.
 
 Create a workspace; the response carries its first API key, shown once:
 
