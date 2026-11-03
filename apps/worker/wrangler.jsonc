@@ -6,6 +6,7 @@
   "minify": true,
   "keep_names": false,
   "workers_dev": true,
+  "routes": [{ "pattern": "uptime.athas.mx", "custom_domain": true }],
   "vars": { "PUBLIC_SLUG": "athas" },
   // The panel's build. Its hashed files under /app/assets are served straight from static assets;
   // everything else reaches the Worker, which answers /app/* with the panel's index.html.
