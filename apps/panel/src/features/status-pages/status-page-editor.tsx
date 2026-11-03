@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { STATUS_THEMES, StatusPageInput, validate, type StatusPage, type StatusPageDraft } from "@tiny-uptime/contracts";
+import {
+  HISTORY_RANGES,
+  STATUS_LANGUAGES,
+  STATUS_THEMES,
+  StatusPageInput,
+  validate,
+  type HistoryRange,
+  type StatusPage,
+  type StatusPageDraft,
+} from "@tiny-uptime/contracts";
 import { Button, buttonVariants } from "@tiny-uptime/ui/components/button";
 import { ConfirmDialog } from "@tiny-uptime/ui/components/dialog";
 import { Field } from "@tiny-uptime/ui/components/field";
@@ -10,14 +19,18 @@ import { Select } from "@tiny-uptime/ui/components/select";
 import { Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { Switch } from "@tiny-uptime/ui/components/switch";
 import { notify } from "@tiny-uptime/ui/components/toast";
-import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ExternalLink, RotateCcw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { ApiError, api, messageOf } from "../../lib/api";
 import { monitorsQuery, statusPageQuery, statusPagesQuery } from "../../lib/queries";
 import { statusPageRoute } from "../../router";
 import { NotFound } from "../shell/not-found";
 
-type Draft = Required<Pick<StatusPageDraft, "title" | "slug" | "description" | "theme" | "showLatency" | "hideBranding">> & {
+type Draft = Required<
+  Pick<StatusPageDraft, "title" | "slug" | "description" | "theme" | "language" | "timeZone" | "showLatency" | "hideBranding">
+> & {
+  historyDays: `${HistoryRange}`;
+  incidentDays: `${HistoryRange}`;
   externalUrl: string;
   customDomain: string;
   okPct: string;
@@ -31,6 +44,10 @@ function toDraft(page?: StatusPage): Draft {
     slug: page?.slug ?? "",
     description: page?.description ?? "",
     theme: page?.theme ?? "auto",
+    language: page?.language ?? "en",
+    timeZone: page?.timeZone ?? browserZone(),
+    historyDays: `${page?.historyDays ?? 90}`,
+    incidentDays: `${page?.incidentDays ?? 14}`,
     showLatency: page?.showLatency ?? true,
     hideBranding: page?.hideBranding ?? false,
     externalUrl: page?.externalUrl ?? "",
@@ -48,7 +65,24 @@ function toInput(d: Draft): StatusPageDraft {
     customDomain: d.customDomain.trim() || null,
     okPct: Number(d.okPct),
     warnPct: Number(d.warnPct),
+    historyDays: Number(d.historyDays) as HistoryRange,
+    incidentDays: Number(d.incidentDays) as HistoryRange,
   };
+}
+
+const RANGE_OPTIONS = HISTORY_RANGES.map((days) => ({
+  value: `${days}` as const,
+  label: days === 1 ? "24 hours, hour by hour" : `${days} days`,
+}));
+
+/** Every zone the browser knows, for the time zone field's suggestions. */
+const ZONES = (() => {
+  const zones = Intl.supportedValuesOf("timeZone");
+  return zones.includes("UTC") ? zones : ["UTC", ...zones];
+})();
+
+function browserZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 export function StatusPageEditor() {
@@ -80,6 +114,14 @@ function Editor({ page }: { page: StatusPage | undefined }) {
     onError: (error) => {
       if (error instanceof ApiError && error.field) setErrors({ [error.field.split(".")[0]!]: tidy(error.message) });
       else setErrors({ form: messageOf(error) });
+    },
+  });
+  const reset = useMutation({
+    mutationFn: (on: boolean) => (on ? api.statusPages.resetHistory(page!.id) : api.statusPages.undoReset(page!.id)),
+    onSuccess: async (saved) => {
+      await refresh();
+      await queryClient.invalidateQueries({ queryKey: statusPageQuery(saved.id).queryKey });
+      notify(saved.historyResetAt ? "History reset" : "Full history restored", { type: "success" });
     },
   });
   const remove = useMutation({
@@ -253,6 +295,48 @@ function Editor({ page }: { page: StatusPage | undefined }) {
           </div>
         </Section>
 
+        <Section title="Language and history" description="What visitors read, in which time zone, and how far back the page looks.">
+          <div className="grid gap-5 p-5 sm:grid-cols-2">
+            <Field label="Language">
+              <Select
+                label="Language"
+                value={draft.language}
+                onValueChange={(language) => set("language", language)}
+                options={STATUS_LANGUAGES.map((l) => ({ value: l, label: { en: "English", es: "Español" }[l] }))}
+              />
+            </Field>
+            <Field
+              label="Time zone"
+              description="For incident and update times. Daily bars still split days at midnight UTC."
+              error={errors.timeZone}
+            >
+              <Input
+                list="status-page-zones"
+                spellCheck={false}
+                placeholder="America/Mexico_City"
+                value={draft.timeZone}
+                onChange={(e) => set("timeZone", e.target.value)}
+              />
+              <datalist id="status-page-zones">
+                {ZONES.map((z) => (
+                  <option key={z} value={z} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Bars show" description="Visitors can switch ranges; this is where the page opens.">
+              <Select label="Bars show" value={draft.historyDays} onValueChange={(v) => set("historyDays", v)} options={RANGE_OPTIONS} />
+            </Field>
+            <Field label="Past incidents from the last">
+              <Select
+                label="Past incidents from the last"
+                value={draft.incidentDays}
+                onValueChange={(v) => set("incidentDays", v)}
+                options={RANGE_OPTIONS.map((o) => (o.value === "1" ? { ...o, label: "24 hours" } : o))}
+              />
+            </Field>
+          </div>
+        </Section>
+
         <Section title="Appearance">
           <div className="flex flex-col gap-5 p-5">
             <div className="grid gap-5 sm:grid-cols-3">
@@ -287,6 +371,38 @@ function Editor({ page }: { page: StatusPage | undefined }) {
 
         {page ? (
           <Section title="Danger zone">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+              <p className="max-w-prose text-muted-foreground">
+                {page.historyResetAt
+                  ? `History starts ${new Date(page.historyResetAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}. Earlier bars and incidents are hidden, not deleted.`
+                  : "Resetting starts the bars and uptime over from this hour and hides older incidents. Nothing is deleted."}
+              </p>
+              <div className="flex gap-2">
+                {page.historyResetAt ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={reset.isPending && !reset.variables}
+                    onClick={() => reset.mutate(false)}
+                  >
+                    Show full history
+                  </Button>
+                ) : null}
+                <ConfirmDialog
+                  trigger={
+                    <Button type="button" variant="secondary">
+                      <RotateCcw />
+                      Reset history
+                    </Button>
+                  }
+                  title={`Reset the history of ${page.title}?`}
+                  description="Visitors see bars and uptime from this hour on, and no incidents from before it. Monitors keep their history, and you can show it again here."
+                  confirmLabel="Reset history"
+                  pending={reset.isPending && reset.variables === true}
+                  onConfirm={() => reset.mutate(true)}
+                />
+              </div>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-3 p-5">
               <p className="text-muted-foreground">Deleting takes the page offline and frees its address.</p>
               <ConfirmDialog

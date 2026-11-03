@@ -53,6 +53,8 @@ export interface HistoryRepository {
   publicHourly(since: number): (HourlyPoint & { monitorId: string })[];
   /** Checks and passes per day (UTC) since `since`, for the given monitors. */
   daily(monitorIds: string[], since: number): { monitorId: string; day: number; checks: number; ok: number }[];
+  /** Checks and passes per hour since `since`, for the given monitors. */
+  hourlyFor(monitorIds: string[], since: number): { monitorId: string; hour: number; checks: number; ok: number }[];
   deleteForMonitor(monitorId: string): void;
   purgeBefore(cutoff: number): void;
 }

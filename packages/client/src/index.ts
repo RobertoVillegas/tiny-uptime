@@ -105,6 +105,9 @@ export function createClient(t: Transport) {
       create: (draft: StatusPageDraft) => post<StatusPage>("/api/v1/status-pages", draft),
       update: (id: string, draft: StatusPageDraft) => patch<StatusPage>(`/api/v1/status-pages/${id}`, draft),
       remove: (id: string) => del(`/api/v1/status-pages/${id}`),
+      /** Starts the page's history over from this hour; `undoReset` shows everything again. */
+      resetHistory: (id: string) => post<StatusPage>(`/api/v1/status-pages/${id}/history-reset`),
+      undoReset: (id: string) => del<StatusPage>(`/api/v1/status-pages/${id}/history-reset`),
     },
     maintenance: {
       list: () => get<Maintenance[]>("/api/v1/maintenance"),

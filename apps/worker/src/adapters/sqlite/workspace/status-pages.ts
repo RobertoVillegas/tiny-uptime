@@ -7,6 +7,11 @@ type PageRow = {
   title: string;
   description: string;
   theme: StatusPage["theme"];
+  language: StatusPage["language"];
+  time_zone: string;
+  history_days: StatusPage["historyDays"];
+  incident_days: StatusPage["incidentDays"];
+  history_reset_at: number | null;
   show_latency: number;
   external_url: string | null;
   hide_branding: number;
@@ -46,8 +51,9 @@ export class SqliteStatusPages implements StatusPageRepository {
 
   insert(p: StatusPage): void {
     this.sql.exec(
-      `INSERT INTO status_page (id, slug, title, description, theme, show_latency, external_url, hide_branding, ok_pct, warn_pct, custom_domain, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO status_page (id, slug, title, description, theme, show_latency, external_url, hide_branding, ok_pct, warn_pct, custom_domain,
+         language, time_zone, history_days, incident_days, history_reset_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ...values(p),
       p.createdAt,
     );
@@ -56,7 +62,8 @@ export class SqliteStatusPages implements StatusPageRepository {
   save(p: StatusPage): void {
     this.sql.exec(
       `UPDATE status_page SET slug = ?, title = ?, description = ?, theme = ?, show_latency = ?, external_url = ?, hide_branding = ?,
-         ok_pct = ?, warn_pct = ?, custom_domain = ? WHERE id = ?`,
+         ok_pct = ?, warn_pct = ?, custom_domain = ?, language = ?, time_zone = ?, history_days = ?, incident_days = ?,
+         history_reset_at = ? WHERE id = ?`,
       ...values(p).slice(1),
       p.id,
     );
@@ -147,6 +154,11 @@ function values(p: StatusPage): SqlStorageValue[] {
     p.okPct,
     p.warnPct,
     p.customDomain,
+    p.language,
+    p.timeZone,
+    p.historyDays,
+    p.incidentDays,
+    p.historyResetAt,
   ];
 }
 
@@ -157,6 +169,11 @@ function toPage(r: PageRow): StatusPage {
     title: r.title,
     description: r.description,
     theme: r.theme,
+    language: r.language,
+    timeZone: r.time_zone,
+    historyDays: r.history_days,
+    incidentDays: r.incident_days,
+    historyResetAt: r.history_reset_at,
     showLatency: bool(r.show_latency),
     externalUrl: r.external_url,
     hideBranding: bool(r.hide_branding),

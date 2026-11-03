@@ -1,13 +1,22 @@
 import { Result } from "better-result";
-import type { PublicComponent, PublicIncident, PublicMaintenance, PublicStatusPage, StatusPageInput } from "@tiny-uptime/contracts";
+import type {
+  HistoryRange,
+  PublicComponent,
+  PublicDay,
+  PublicIncident,
+  PublicMaintenance,
+  PublicStatusPage,
+  StatusPageInput,
+} from "@tiny-uptime/contracts";
 import type { Incident } from "../../domain/incident";
 import { covers, isActive, isFinished } from "../../domain/maintenance";
 import type { Monitor } from "../../domain/monitor/monitor";
-import { overallStatus, PUBLIC_DAYS, PUBLIC_INCIDENT_DAYS, type StatusComponent, type StatusPage } from "../../domain/status-page";
+import { overallStatus, type StatusComponent, type StatusPage } from "../../domain/status-page";
 import { Conflict, Invalid, NotFound } from "../../errors";
 import type { WorkspaceDeps } from "./deps";
 
-const DAY = 86_400_000;
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
 export type StatusPageWithComponents = StatusPage & { components: StatusComponent[] };
 
@@ -49,6 +58,11 @@ export function saveStatusPage(
     title: input.title,
     description: input.description,
     theme: input.theme,
+    language: input.language,
+    timeZone: input.timeZone,
+    historyDays: input.historyDays,
+    incidentDays: input.incidentDays,
+    historyResetAt: existing?.historyResetAt ?? null,
     showLatency: input.showLatency,
     externalUrl: input.externalUrl,
     hideBranding: input.hideBranding,
@@ -71,8 +85,23 @@ export function deleteStatusPage(d: WorkspaceDeps, id: string): Result<StatusPag
   return Result.ok(page);
 }
 
-/** Everything a public page shows, without anything private: no targets, no internal notes. */
-export function publicStatusPage(d: WorkspaceDeps, pageId: string): PublicStatusPage | null {
+/**
+ * Starts a page's history over from the current hour: earlier bars show no data and earlier
+ * incidents drop off the page. Nothing is deleted, so `reset: false` brings it all back.
+ */
+export function resetStatusPageHistory(d: WorkspaceDeps, id: string, reset: boolean): Result<StatusPageWithComponents, NotFound> {
+  const page = d.statusPages.get(id);
+  if (!page) return Result.err(new NotFound({ message: "status page not found" }));
+  const saved = { ...page, historyResetAt: reset ? Math.floor(d.clock.now() / HOUR) * HOUR : null };
+  d.statusPages.save(saved);
+  return Result.ok({ ...saved, components: d.statusPages.components(id) });
+}
+
+/**
+ * Everything a public page shows, without anything private: no targets, no internal notes.
+ * `days` is the range a visitor picked; without it, the page's own default.
+ */
+export function publicStatusPage(d: WorkspaceDeps, pageId: string, days?: HistoryRange): PublicStatusPage | null {
   const page = d.statusPages.get(pageId);
   if (!page) return null;
   const monitors = new Map(d.monitors.list().map((m) => [m.id, m]));
@@ -81,6 +110,7 @@ export function publicStatusPage(d: WorkspaceDeps, pageId: string): PublicStatus
     d,
     page,
     components.map((c) => ({ monitor: monitors.get(c.monitorId)!, group: c.group })),
+    days ?? page.historyDays,
   );
 }
 
@@ -88,7 +118,7 @@ export function publicStatusPage(d: WorkspaceDeps, pageId: string): PublicStatus
  * The page a workspace slug serves when it has no status page of its own: every monitor marked
  * public, in one group. Kept so links made before status pages existed still work.
  */
-export function legacyPublicPage(d: WorkspaceDeps): PublicStatusPage | null {
+export function legacyPublicPage(d: WorkspaceDeps, days?: HistoryRange): PublicStatusPage | null {
   const info = d.info.get();
   if (!info) return null;
   const page: StatusPage = {
@@ -97,6 +127,11 @@ export function legacyPublicPage(d: WorkspaceDeps): PublicStatusPage | null {
     title: info.name,
     description: "",
     theme: "auto",
+    language: "en",
+    timeZone: "UTC",
+    historyDays: 90,
+    incidentDays: 14,
+    historyResetAt: null,
     showLatency: true,
     externalUrl: null,
     hideBranding: false,
@@ -109,30 +144,25 @@ export function legacyPublicPage(d: WorkspaceDeps): PublicStatusPage | null {
     d,
     page,
     d.monitors.listPublic().map((monitor) => ({ monitor, group: "Services" })),
+    days ?? page.historyDays,
   );
 }
 
-function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: { monitor: Monitor; group: string }[]): PublicStatusPage {
+function buildPublicPage(
+  d: WorkspaceDeps,
+  page: StatusPage,
+  shown: { monitor: Monitor; group: string }[],
+  range: HistoryRange,
+): PublicStatusPage {
   const now = d.clock.now();
-  const today = Math.floor(now / DAY) * DAY;
-  const since = today - (PUBLIC_DAYS - 1) * DAY;
   const ids = shown.map((s) => s.monitor.id);
-  const daily = d.history.daily(ids, since);
+  const bars = range === 1 ? hourBars(d, ids, now, page.historyResetAt) : dayBars(d, ids, now, range, page.timeZone, page.historyResetAt);
   const windows = d.maintenance.list();
 
   const component = (m: Monitor): PublicComponent => {
-    const mine = new Map(daily.filter((p) => p.monitorId === m.id).map((p) => [p.day, p]));
-    const days = Array.from({ length: PUBLIC_DAYS }, (_, i) => {
-      const day = since + i * DAY;
-      const point = mine.get(day);
-      return {
-        day: new Date(day).toISOString().slice(0, 10),
-        checks: point?.checks ?? 0,
-        uptime: point?.checks ? point.ok / point.checks : null,
-      };
-    });
+    const days = bars(m.id);
     const checks = days.reduce((n, x) => n + x.checks, 0);
-    const ok = [...mine.values()].reduce((n, x) => n + x.ok, 0);
+    const ok = days.reduce((n, x) => n + (x.uptime ?? 0) * x.checks, 0);
     return {
       id: m.id,
       name: m.name,
@@ -153,7 +183,11 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: { monitor: M
   const names = new Map(shown.map((s) => [s.monitor.id, s.monitor.name]));
   const incidents = d.incidents
     .list({ limit: 200 })
-    .filter((i) => names.has(i.monitorId) && (i.resolvedAt === null || i.resolvedAt >= now - PUBLIC_INCIDENT_DAYS * DAY));
+    .filter(
+      (i) =>
+        names.has(i.monitorId) &&
+        (i.resolvedAt === null || (i.resolvedAt >= now - page.incidentDays * DAY && i.startedAt >= (page.historyResetAt ?? 0))),
+    );
   const updates = d.incidentUpdates.forIncidents(
     incidents.map((i) => i.id),
     true,
@@ -186,6 +220,13 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: { monitor: M
     title: page.title,
     description: page.description,
     theme: page.theme,
+    language: page.language,
+    timeZone: page.timeZone,
+    historyDays: range,
+    defaultHistoryDays: page.historyDays,
+    barSize: range === 1 ? "hour" : "day",
+    incidentDays: page.incidentDays,
+    historyResetAt: page.historyResetAt === null ? null : iso(page.historyResetAt),
     showLatency: page.showLatency,
     externalUrl: page.externalUrl,
     hideBranding: page.hideBranding,
@@ -201,6 +242,101 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: { monitor: M
     maintenance,
     updatedAt: iso(now),
   };
+}
+
+/** The last 24 hours, one bar each, ending with the current hour. */
+function hourBars(d: WorkspaceDeps, ids: string[], now: number, resetAt: number | null): (monitorId: string) => PublicDay[] {
+  const since = Math.floor(now / HOUR) * HOUR - 23 * HOUR;
+  const points = byMonitor(d.history.hourlyFor(ids, Math.max(since, resetAt ?? 0)).map((p) => ({ ...p, at: p.hour })));
+  return (monitorId) =>
+    Array.from({ length: 24 }, (_, i) => {
+      const hour = since + i * HOUR;
+      return bar(iso(hour), points.get(monitorId)?.get(hour));
+    });
+}
+
+/**
+ * The last `range` days in the page's zone, one bar each, ending today. UTC pages without a reset
+ * in range read the daily rollup; others sum hours into local days, so a day runs midnight to
+ * midnight where the page lives and hours before a reset count for nothing.
+ */
+function dayBars(
+  d: WorkspaceDeps,
+  ids: string[],
+  now: number,
+  range: number,
+  zone: string,
+  resetAt: number | null,
+): (monitorId: string) => PublicDay[] {
+  const starts = [startOfDay(now, zone)];
+  while (starts.length < range) starts.unshift(startOfDay(starts[0]! - HOUR, zone));
+  const labels = starts.map((s) => localDate(s, zone));
+  const since = starts[0]!;
+  if (zone === "UTC" && (resetAt === null || resetAt <= since)) {
+    const daily = byMonitor(d.history.daily(ids, since).map((p) => ({ ...p, at: p.day })));
+    return (monitorId) => starts.map((s, i) => bar(labels[i]!, daily.get(monitorId)?.get(s)));
+  }
+  const sums = new Map<string, { checks: number; ok: number }[]>();
+  for (const p of d.history.hourlyFor(ids, Math.max(since, resetAt ?? 0))) {
+    let i = starts.length - 1;
+    while (i > 0 && p.hour < starts[i]!) i--;
+    let mine = sums.get(p.monitorId);
+    if (!mine) sums.set(p.monitorId, (mine = []));
+    const sum = (mine[i] ??= { checks: 0, ok: 0 });
+    sum.checks += p.checks;
+    sum.ok += p.ok;
+  }
+  return (monitorId) => labels.map((label, i) => bar(label, sums.get(monitorId)?.[i]));
+}
+
+/** The instant the local day containing `ms` began in `zone`. */
+function startOfDay(ms: number, zone: string): number {
+  const [y, m, day] = localDate(ms, zone).split("-").map(Number) as [number, number, number];
+  const midnight = Date.UTC(y, m - 1, day);
+  // Local midnight is UTC midnight minus the zone's offset; take the offset near that instant twice
+  // so a DST change during the night lands on the right side.
+  let at = midnight - offset(midnight, zone);
+  at = midnight - offset(at, zone);
+  return at;
+}
+
+/** The local calendar date of `ms` in `zone`, as YYYY-MM-DD. */
+function localDate(ms: number, zone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+}
+
+/** How far `zone`'s wall clock is ahead of UTC at `ms`. */
+function offset(ms: number, zone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    })
+      .formatToParts(ms)
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  const wall = Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!);
+  return wall - Math.floor(ms / 1000) * 1000;
+}
+
+function byMonitor<T extends { monitorId: string; at: number }>(points: T[]): Map<string, Map<number, T>> {
+  const out = new Map<string, Map<number, T>>();
+  for (const p of points) {
+    let mine = out.get(p.monitorId);
+    if (!mine) out.set(p.monitorId, (mine = new Map()));
+    mine.set(p.at, p);
+  }
+  return out;
+}
+
+function bar(day: string, point: { checks: number; ok: number } | undefined): PublicDay {
+  return { day, checks: point?.checks ?? 0, uptime: point?.checks ? point.ok / point.checks : null };
 }
 
 function iso(ms: number): string {

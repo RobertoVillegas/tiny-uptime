@@ -7,6 +7,24 @@ const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,6
 const pct = v.pipe(v.number(), v.minValue(0), v.maxValue(100));
 
 export const STATUS_THEMES = ["auto", "light", "dark"] as const;
+export const STATUS_LANGUAGES = ["en", "es"] as const;
+export type StatusLanguage = (typeof STATUS_LANGUAGES)[number];
+/** How far back a page's bars can reach, in days. One day is drawn hour by hour. */
+export const HISTORY_RANGES = [1, 7, 14, 30, 45, 90] as const;
+export type HistoryRange = (typeof HISTORY_RANGES)[number];
+/** The longest range, which is also how much daily history a page ever reads. */
+export const MAX_HISTORY_DAYS = 90;
+
+/** Whether this runtime knows the IANA zone, e.g. America/Mexico_City. */
+export function isTimeZone(zone: string): boolean {
+  try {
+    return new Intl.DateTimeFormat("en", { timeZone: zone }).resolvedOptions().timeZone !== "";
+  } catch {
+    return false;
+  }
+}
+
+const range = v.picklist(HISTORY_RANGES);
 
 export const StatusPageComponentInput = v.object({
   monitorId: id,
@@ -20,6 +38,13 @@ export const StatusPageInput = v.pipe(
     slug: v.pipe(v.string(), v.trim(), v.toLowerCase(), v.regex(SLUG, "must be lowercase letters, digits and dashes")),
     description: v.optional(v.pipe(v.string(), v.trim(), v.maxLength(500)), ""),
     theme: v.optional(v.picklist(STATUS_THEMES), "auto"),
+    language: v.optional(v.picklist(STATUS_LANGUAGES), "en"),
+    /** Where the page's dates and times are shown. Bars still split days at midnight UTC. */
+    timeZone: v.optional(v.pipe(v.string(), v.trim(), v.check(isTimeZone, "must be a time zone like America/Mexico_City")), "UTC"),
+    /** The range the bars show until a visitor picks another. */
+    historyDays: v.optional(range, 90),
+    /** How far back the list of past incidents goes. */
+    incidentDays: v.optional(range, 14),
     showLatency: v.optional(v.boolean(), true),
     /** A link back to the product the page reports on. */
     externalUrl: v.optional(
@@ -45,16 +70,25 @@ export const StatusPageInput = v.pipe(
 export type StatusPageInput = v.InferOutput<typeof StatusPageInput>;
 export type StatusPageDraft = v.InferInput<typeof StatusPageInput>;
 
-export type StatusPage = StatusPageInput & { id: string; url: string; createdAt: string };
+export type StatusPage = StatusPageInput & {
+  id: string;
+  url: string;
+  /** When the page's history was last reset: nothing before it is shown. */
+  historyResetAt: string | null;
+  createdAt: string;
+};
 
-/** One day on a public page's bars: its uptime, or null when nothing was checked. */
+/**
+ * One bar on a public page: a day (`2026-11-03`), or an hour (`2026-11-03T14:00:00.000Z`) when
+ * the page shows a single day. Uptime is null when nothing was checked.
+ */
 export type PublicDay = { day: string; uptime: number | null; checks: number };
 
 export type PublicComponent = {
   id: string;
   name: string;
   status: MonitorStatus;
-  /** Uptime across the days shown, or null without data. */
+  /** Uptime across the bars shown, or null without data. */
   uptime: number | null;
   latencyMs: number | null;
   days: PublicDay[];
@@ -80,6 +114,15 @@ export type PublicStatusPage = {
   title: string;
   description: string;
   theme: (typeof STATUS_THEMES)[number];
+  language: StatusLanguage;
+  timeZone: string;
+  /** The range these bars cover, and the one the page opens with. */
+  historyDays: HistoryRange;
+  defaultHistoryDays: HistoryRange;
+  /** "hour" when the range is one day. */
+  barSize: "day" | "hour";
+  incidentDays: HistoryRange;
+  historyResetAt: string | null;
   showLatency: boolean;
   externalUrl: string | null;
   hideBranding: boolean;

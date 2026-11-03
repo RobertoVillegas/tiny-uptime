@@ -1,4 +1,4 @@
-import type { IncidentUpdateStatus, OverallStatus, STATUS_THEMES } from "@tiny-uptime/contracts";
+import type { HistoryRange, IncidentUpdateStatus, OverallStatus, STATUS_THEMES, StatusLanguage } from "@tiny-uptime/contracts";
 import type { MonitorStatus } from "./monitor/monitor";
 
 export type StatusPage = {
@@ -7,6 +7,12 @@ export type StatusPage = {
   title: string;
   description: string;
   theme: (typeof STATUS_THEMES)[number];
+  language: StatusLanguage;
+  timeZone: string;
+  historyDays: HistoryRange;
+  incidentDays: HistoryRange;
+  /** Start of the hour the history was reset at, or null. */
+  historyResetAt: number | null;
   showLatency: boolean;
   externalUrl: string | null;
   hideBranding: boolean;
@@ -27,11 +33,6 @@ export type IncidentUpdate = {
   author: string | null;
   createdAt: number;
 };
-
-/** Days of history a public page shows. */
-export const PUBLIC_DAYS = 90;
-/** Resolved incidents a public page lists. */
-export const PUBLIC_INCIDENT_DAYS = 14;
 
 /**
  * The banner of a status page, from the statuses of what it shows: maintenance wins while it is

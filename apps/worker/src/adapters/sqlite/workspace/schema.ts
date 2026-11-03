@@ -139,4 +139,12 @@ export const MIGRATIONS: string[] = [
   INSERT INTO rollup_daily (monitor_id, day, checks, ok)
     SELECT monitor_id, (hour / 86400000) * 86400000, sum(checks), sum(ok) FROM rollup GROUP BY monitor_id, (hour / 86400000);
   `,
+  // 5: status page language, time zone, history and incident ranges, and history resets.
+  `
+  ALTER TABLE status_page ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
+  ALTER TABLE status_page ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'UTC';
+  ALTER TABLE status_page ADD COLUMN history_days INTEGER NOT NULL DEFAULT 90;
+  ALTER TABLE status_page ADD COLUMN incident_days INTEGER NOT NULL DEFAULT 14;
+  ALTER TABLE status_page ADD COLUMN history_reset_at INTEGER;
+  `,
 ];

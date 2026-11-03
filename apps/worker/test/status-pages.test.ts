@@ -155,4 +155,150 @@ describe("status pages", () => {
     const html = await (await exports.default.fetch(`${BASE}/s/${legacy}`)).text();
     expect(html).toContain("Public thing");
   });
+
+  it("shows the range a page opens with, or the one a visitor picks, hour by hour for a day", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    const created = await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Ranges",
+      slug: pageSlug,
+      historyDays: 30,
+      components: [{ monitorId: api.id }],
+    });
+    expect(created.body.historyDays).toBe(30);
+    await tick(ws.id);
+
+    const opens = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    expect(opens.historyDays).toBe(30);
+    expect(opens.groups[0].components[0].days).toHaveLength(30);
+
+    const day = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1`)).json()) as any;
+    expect(day.barSize).toBe("hour");
+    expect(day.groups[0].components[0].days).toHaveLength(24);
+    expect(day.groups[0].components[0].days.at(-1).checks).toBe(1);
+
+    const odd = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1000`)).json()) as any;
+    expect(odd.historyDays).toBe(30);
+
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=7`)).text();
+    expect(html).toContain(`href="/s/${pageSlug}?days=7" aria-current="page"`);
+    expect(html).toContain(`href="/s/${pageSlug}">30 days</a>`);
+    expect(html).toContain('href="https://github.com/RobertoVillegas/tiny-uptime"');
+
+    expect((await call("POST", "/api/v1/status-pages", ws.apiKey, { title: "x", slug: slug(), historyDays: 60 })).body.field).toBe(
+      "historyDays",
+    );
+  });
+
+  it("speaks the page's language and shows times in its zone", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Estado",
+      slug: pageSlug,
+      language: "es",
+      timeZone: "America/Mexico_City",
+      components: [{ monitorId: api.id }],
+    });
+    failing.add(api.url);
+    await tick(ws.id);
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
+    expect(html).toContain('<html lang="es"');
+    expect(html).toContain("Falla general");
+    expect(html).toContain("Caído");
+    expect(html).toContain("Incidentes anteriores");
+    expect(html).toMatch(/Actualizado \d\d:\d\d GMT-6/);
+    expect(html).not.toContain("UTC");
+
+    expect(
+      (await call("POST", "/api/v1/status-pages", ws.apiKey, { title: "x", slug: slug(), timeZone: "Mars/Olympus_Mons" })).body.field,
+    ).toBe("timeZone");
+  });
+
+  it("cuts days at the page's midnight and shows times in the visitor's zone", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Estado",
+      slug: pageSlug,
+      language: "es",
+      timeZone: "America/Mexico_City",
+      historyDays: 7,
+      components: [{ monitorId: api.id }],
+    });
+    // Mexico City has been UTC-6 all year since 2022.
+    const SIX = 6 * 3_600_000;
+    const midnight = Math.floor((Date.now() - SIX) / 86_400_000) * 86_400_000 + SIX;
+    await runInDurableObject(env.WORKSPACE.get(env.WORKSPACE.idFromName(ws.id)), (_: Workspace, state) => {
+      const insert =
+        "INSERT INTO rollup (monitor_id, hour, checks, ok, ms_sum, ms_count, ms_min, ms_max) VALUES (?, ?, 1, ?, 0, 0, NULL, NULL)";
+      state.storage.sql.exec(insert, api.id, midnight - 3_600_000, 0);
+      state.storage.sql.exec(insert, api.id, midnight, 1);
+    });
+    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    const days = json.groups[0].components[0].days;
+    expect(days).toHaveLength(7);
+    expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1 });
+    expect(days.at(-2)).toMatchObject({ checks: 1, uptime: 0 });
+
+    const local = await exports.default.fetch(`${BASE}/s/${pageSlug}`);
+    expect(local.headers.get("cache-control")).toBe("private, max-age=30");
+    const here = await local.text();
+    expect(here).toMatch(/Actualizado \d\d:\d\d GMT-6/);
+    expect(here).not.toContain("Cada barra es un día");
+
+    const madrid = await (
+      await exports.default.fetch(new Request(`${BASE}/s/${pageSlug}`, { cf: { timezone: "Europe/Madrid" } } as RequestInit))
+    ).text();
+    expect(madrid).toMatch(/Actualizado \d\d:\d\d CES?T/);
+    expect(madrid).toContain("Cada barra es un día en hora GMT-6.");
+  });
+
+  it("resets a page's history without deleting it, and brings it back", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    const created = await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Reset",
+      slug: pageSlug,
+      incidentDays: 90,
+      components: [{ monitorId: api.id }],
+    });
+    const id = created.body.id as string;
+    failing.add(api.url);
+    await tick(ws.id);
+    failing.clear();
+    await tick(ws.id);
+    await runInDurableObject(env.WORKSPACE.get(env.WORKSPACE.idFromName(ws.id)), (_: Workspace, state) => {
+      const twoDaysAgo = Date.now() - 2 * 86_400_000;
+      state.storage.sql.exec("UPDATE incident SET started_at = ?, resolved_at = ?", twoDaysAgo, twoDaysAgo + 60_000);
+      state.storage.sql.exec("UPDATE rollup SET hour = ?", Math.floor(twoDaysAgo / 3_600_000) * 3_600_000);
+      state.storage.sql.exec("UPDATE rollup_daily SET day = ?", Math.floor(twoDaysAgo / 86_400_000) * 86_400_000);
+    });
+    const before = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    expect(before.pastIncidents).toHaveLength(1);
+    expect(before.groups[0].components[0].uptime).toBe(0.5);
+
+    const reset = await call("POST", `/api/v1/status-pages/${id}/history-reset`, ws.apiKey);
+    expect(reset.status).toBe(200);
+    expect(reset.body.historyResetAt).not.toBeNull();
+    const after = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    expect(after.pastIncidents).toHaveLength(0);
+    expect(after.groups[0].components[0].uptime).toBeNull();
+    expect(after.groups[0].components[0].days.every((d: { checks: number }) => d.checks === 0)).toBe(true);
+
+    await tick(ws.id);
+    const fresh = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    expect(fresh.groups[0].components[0].uptime).toBe(1);
+    expect(fresh.groups[0].components[0].days.at(-1).checks).toBe(1);
+
+    const undone = await call("DELETE", `/api/v1/status-pages/${id}/history-reset`, ws.apiKey);
+    expect(undone.body.historyResetAt).toBeNull();
+    const back = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    expect(back.pastIncidents).toHaveLength(1);
+    expect(back.groups[0].components[0].uptime).toBeCloseTo(2 / 3);
+  });
 });

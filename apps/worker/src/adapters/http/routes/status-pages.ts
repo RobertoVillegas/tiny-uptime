@@ -32,6 +32,18 @@ export function statusPageRoutes(router: Router): void {
       "/api/v1/status-pages/:id",
       workspaceRoute((c) => save(c, c.params.id!, "update")),
     )
+    .post(
+      "/api/v1/status-pages/:id/history-reset",
+      workspaceRoute(async (c) =>
+        reply(await c.workspace.resetStatusPageHistory(c.principal, c.params.id!, true), (p) => present(p, c.url.origin)),
+      ),
+    )
+    .delete(
+      "/api/v1/status-pages/:id/history-reset",
+      workspaceRoute(async (c) =>
+        reply(await c.workspace.resetStatusPageHistory(c.principal, c.params.id!, false), (p) => present(p, c.url.origin)),
+      ),
+    )
     .delete(
       "/api/v1/status-pages/:id",
       workspaceRoute(async (c) => {
@@ -81,6 +93,11 @@ function present(p: workspace.StatusPageWithComponents, origin: string): StatusP
     title: p.title,
     description: p.description,
     theme: p.theme,
+    language: p.language,
+    timeZone: p.timeZone,
+    historyDays: p.historyDays,
+    incidentDays: p.incidentDays,
+    historyResetAt: p.historyResetAt === null ? null : new Date(p.historyResetAt).toISOString(),
     showLatency: p.showLatency,
     externalUrl: p.externalUrl,
     hideBranding: p.hideBranding,

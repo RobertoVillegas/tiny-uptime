@@ -1,27 +1,41 @@
-import type {
-  OverallStatus,
-  PublicComponent,
-  PublicDay,
-  PublicIncident,
-  PublicMaintenance,
-  PublicStatusPage,
+import {
+  HISTORY_RANGES,
+  type HistoryRange,
+  type OverallStatus,
+  type PublicComponent,
+  type PublicDay,
+  type PublicIncident,
+  type PublicIncidentUpdate,
+  type PublicMaintenance,
+  type PublicStatusPage,
+  type StatusLanguage,
 } from "@tiny-uptime/contracts";
 import { STATUS_PAGE_CSS } from "./status-page-css";
 
+/** Where "Powered by tiny-uptime" leads. */
+export const REPO_URL = "https://github.com/RobertoVillegas/tiny-uptime";
+
 /**
  * The public status page: server-rendered HTML with no JavaScript, so it loads instantly, costs the
- * Worker a millisecond, and works everywhere. Every value from the page's data is escaped.
+ * Worker a millisecond, and works everywhere. Every value from the page's data is escaped. Text is
+ * in the page's language. Days follow the page's zone; times of day follow the visitor's when
+ * Cloudflare knows it (`viewerZone`), else the page's. `path` is where the range links point.
  */
-export function renderStatusPage(page: PublicStatusPage, opts: { feedPath: string | null }): string {
+export function renderStatusPage(
+  page: PublicStatusPage,
+  opts: { feedPath: string | null; path: string; viewerZone?: string | null },
+): string {
+  const t = TEXT[page.language];
+  const f = formats(page, opts.viewerZone ?? page.timeZone);
   const theme = page.theme === "auto" ? "" : ` data-theme="${page.theme}"`;
   return `<!doctype html>
-<html lang="en"${theme}>
+<html lang="${page.language}"${theme}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(page.title)}</title>
-<meta name="description" content="${esc(page.description || `Current status of ${page.title}`)}">
-${opts.feedPath ? `<link rel="alternate" type="application/rss+xml" title="${esc(page.title)} incidents" href="${esc(opts.feedPath)}">` : ""}
+<meta name="description" content="${esc(page.description || t.currentStatus(page.title))}">
+${opts.feedPath ? `<link rel="alternate" type="application/rss+xml" title="${esc(t.feedTitle(page.title))}" href="${esc(opts.feedPath)}">` : ""}
 <style>${STATUS_PAGE_CSS}</style>
 </head>
 <body>
@@ -31,88 +45,201 @@ ${opts.feedPath ? `<link rel="alternate" type="application/rss+xml" title="${esc
     <h1>${esc(page.title)}</h1>
     ${page.description ? `<p class="muted">${esc(page.description)}</p>` : ""}
   </div>
-  ${page.externalUrl ? `<a class="link" href="${esc(page.externalUrl)}" rel="noopener">Visit site</a>` : ""}
+  ${page.externalUrl ? `<a class="link" href="${esc(page.externalUrl)}" rel="noopener">${t.visitSite}</a>` : ""}
 </header>
-${banner(page.overall)}
-${page.activeIncidents.map((i) => incident(i, true)).join("")}
-${page.maintenance.map(maintenance).join("")}
-${page.groups.map((g) => group(g.name, g.components, page)).join("")}
+${banner(page.overall, t)}
+${page.activeIncidents.map((i) => incident(i, true, t, f)).join("")}
+${page.maintenance.map((m) => maintenance(m, t, f)).join("")}
+${ranges(page, opts.path, t, f)}
+${page.groups.map((g) => group(g.name, g.components, page, t, f)).join("")}
 <section class="history">
-  <h2>Past incidents</h2>
-  ${page.pastIncidents.length ? page.pastIncidents.map((i) => incident(i, false)).join("") : `<p class="muted">No incidents in the last 14 days.</p>`}
+  <h2>${t.pastIncidents}</h2>
+  ${page.pastIncidents.length ? page.pastIncidents.map((i) => incident(i, false, t, f)).join("") : `<p class="muted">${t.noIncidents(page.incidentDays)}</p>`}
 </section>
 <footer>
-  <span>Updated ${time(page.updatedAt)} UTC</span>
+  <span>${t.updated} ${f.time(page.updatedAt)} ${esc(f.zone)}</span>
   ${opts.feedPath ? `<a href="${esc(opts.feedPath)}">RSS</a>` : ""}
-  ${page.hideBranding ? "" : `<span>Powered by tiny-uptime</span>`}
+  ${page.hideBranding ? "" : `<span>${t.poweredBy} <a href="${REPO_URL}" rel="noopener">tiny-uptime</a></span>`}
 </footer>
 </main>
 </body>
 </html>`;
 }
 
-const BANNER: Record<OverallStatus, { text: string; tone: string }> = {
-  operational: { text: "All systems operational", tone: "up" },
-  degraded: { text: "Some systems are slow", tone: "warn" },
-  partial_outage: { text: "Partial outage", tone: "down" },
-  major_outage: { text: "Major outage", tone: "down" },
-  maintenance: { text: "Scheduled maintenance in progress", tone: "info" },
+type Text = {
+  currentStatus: (title: string) => string;
+  feedTitle: (title: string) => string;
+  visitSite: string;
+  pastIncidents: string;
+  noIncidents: (days: number) => string;
+  updated: string;
+  poweredBy: string;
+  banner: Record<OverallStatus, string>;
+  state: Record<PublicComponent["status"], string>;
+  range: string;
+  daysIn: (zone: string) => string;
+  rangeLabel: (days: HistoryRange) => string;
+  ago: (n: number, size: "day" | "hour") => string;
+  now: (size: "day" | "hour") => string;
+  uptime: string;
+  uptimeOver: (name: string, share: string, n: number, size: "day" | "hour") => string;
+  noData: string;
+  checks: (share: string, n: number) => string;
+  since: string;
+  lasted: string;
+  slow: string;
+  maintenanceNow: string;
+  maintenanceLater: string;
+  update: Record<PublicIncidentUpdate["status"], string>;
 };
 
-function banner(overall: OverallStatus): string {
-  const { text, tone } = BANNER[overall];
-  return `<div class="banner ${tone}" role="status"><span class="dot"></span>${text}</div>`;
+const TEXT: Record<StatusLanguage, Text> = {
+  en: {
+    currentStatus: (title) => `Current status of ${title}`,
+    feedTitle: (title) => `${title} incidents`,
+    visitSite: "Visit site",
+    pastIncidents: "Past incidents",
+    noIncidents: (days) => (days === 1 ? "No incidents in the last day." : `No incidents in the last ${days} days.`),
+    updated: "Updated",
+    poweredBy: "Powered by",
+    banner: {
+      operational: "All systems operational",
+      degraded: "Some systems are slow",
+      partial_outage: "Partial outage",
+      major_outage: "Major outage",
+      maintenance: "Scheduled maintenance in progress",
+    },
+    state: { up: "Operational", degraded: "Slow", down: "Down", pending: "Checking", paused: "Paused" },
+    range: "History",
+    daysIn: (zone) => `Each bar is a day in ${zone}.`,
+    rangeLabel: (days) => (days === 1 ? "24 hours" : `${days} days`),
+    ago: (n, size) => `${n} ${size === "hour" ? "hours" : "days"} ago`,
+    now: (size) => (size === "hour" ? "Now" : "Today"),
+    uptime: "uptime",
+    uptimeOver: (name, share, n, size) => `${name}: ${share} uptime over the last ${n} ${size === "hour" ? "hours" : "days"}`,
+    noData: "No data",
+    checks: (share, n) => `${share} uptime, ${n} checks`,
+    since: "Since",
+    lasted: "lasted",
+    slow: "slow responses",
+    maintenanceNow: "Maintenance in progress",
+    maintenanceLater: "Scheduled maintenance",
+    update: { investigating: "Investigating", identified: "Identified", monitoring: "Monitoring", resolved: "Resolved", update: "Update" },
+  },
+  es: {
+    currentStatus: (title) => `Estado actual de ${title}`,
+    feedTitle: (title) => `Incidentes de ${title}`,
+    visitSite: "Ir al sitio",
+    pastIncidents: "Incidentes anteriores",
+    noIncidents: (days) => (days === 1 ? "Sin incidentes en el último día." : `Sin incidentes en los últimos ${days} días.`),
+    updated: "Actualizado",
+    poweredBy: "Hecho con",
+    banner: {
+      operational: "Todos los sistemas funcionan",
+      degraded: "Algunos sistemas van lentos",
+      partial_outage: "Falla parcial",
+      major_outage: "Falla general",
+      maintenance: "Mantenimiento programado en curso",
+    },
+    state: { up: "Funciona", degraded: "Lento", down: "Caído", pending: "Revisando", paused: "En pausa" },
+    range: "Historial",
+    daysIn: (zone) => `Cada barra es un día en hora ${zone}.`,
+    rangeLabel: (days) => (days === 1 ? "24 horas" : `${days} días`),
+    ago: (n, size) => `Hace ${n} ${size === "hour" ? "horas" : "días"}`,
+    now: (size) => (size === "hour" ? "Ahora" : "Hoy"),
+    uptime: "disponible",
+    uptimeOver: (name, share, n, size) =>
+      `${name}: ${share} disponible en ${size === "hour" ? "las últimas" : "los últimos"} ${n} ${size === "hour" ? "horas" : "días"}`,
+    noData: "Sin datos",
+    checks: (share, n) => `${share} disponible, ${n} revisiones`,
+    since: "Desde el",
+    lasted: "duró",
+    slow: "respuestas lentas",
+    maintenanceNow: "Mantenimiento en curso",
+    maintenanceLater: "Mantenimiento programado",
+    update: {
+      investigating: "Investigando",
+      identified: "Identificado",
+      monitoring: "En observación",
+      resolved: "Resuelto",
+      update: "Novedad",
+    },
+  },
+};
+
+const TONE: Record<OverallStatus, string> = {
+  operational: "up",
+  degraded: "warn",
+  partial_outage: "down",
+  major_outage: "down",
+  maintenance: "info",
+};
+
+function banner(overall: OverallStatus, t: Text): string {
+  return `<div class="banner ${TONE[overall]}" role="status"><span class="dot"></span>${t.banner[overall]}</div>`;
 }
 
-function group(name: string, components: PublicComponent[], page: PublicStatusPage): string {
+/** Links to every range, the current one marked; the page's default range links to the bare path. */
+function ranges(page: PublicStatusPage, path: string, t: Text, f: Formats): string {
+  const link = (days: HistoryRange) => {
+    const href = days === page.defaultHistoryDays ? path : `${path}?days=${days}`;
+    const current = days === page.historyDays ? ` aria-current="page"` : "";
+    return `<a href="${esc(href)}"${current}>${t.rangeLabel(days)}</a>`;
+  };
+  const note = page.barSize === "day" && f.dayZone ? `<p class="muted small zone-note">${t.daysIn(esc(f.dayZone))}</p>` : "";
+  return `<nav class="ranges" aria-label="${t.range}">${HISTORY_RANGES.map(link).join("")}</nav>${note}`;
+}
+
+function group(name: string, components: PublicComponent[], page: PublicStatusPage, t: Text, f: Formats): string {
   return `<section class="group">
   <h2>${esc(name)}</h2>
-  <ul class="components">${components.map((c) => component(c, page)).join("")}</ul>
+  <ul class="components">${components.map((c) => component(c, page, t, f)).join("")}</ul>
 </section>`;
 }
 
-const STATUS_TEXT: Record<PublicComponent["status"], string> = {
-  up: "Operational",
-  degraded: "Slow",
-  down: "Down",
-  pending: "Checking",
-  paused: "Paused",
-};
-
-function component(c: PublicComponent, page: PublicStatusPage): string {
+function component(c: PublicComponent, page: PublicStatusPage, t: Text, f: Formats): string {
+  const n = c.days.length;
+  const size = page.barSize;
+  const long = n > 45;
   const latency = page.showLatency && c.latencyMs !== null ? `<span class="muted num">${c.latencyMs} ms</span>` : "";
+  const ago = long
+    ? `<span class="wide">${t.ago(n, size)}</span><span class="narrow">${t.ago(Math.ceil(n / 2), size)}</span>`
+    : t.ago(n, size);
   return `<li class="component">
   <div class="row">
     <span class="name">${esc(c.name)}</span>
-    <span class="state ${c.status}">${STATUS_TEXT[c.status]}</span>
+    <span class="state ${c.status}">${t.state[c.status]}</span>
   </div>
-  <div class="bars" role="img" aria-label="${esc(c.name)}: ${pct(c.uptime)} uptime over the last ${c.days.length} days">${c.days.map((d) => bar(d, page)).join("")}</div>
-  <div class="row muted small"><span><span class="wide">${c.days.length}</span><span class="narrow">${Math.ceil(c.days.length / 2)}</span> days ago</span><span class="num">${pct(c.uptime)} uptime</span>${latency}<span>Today</span></div>
+  <div class="bars${long ? " long" : ""}" style="--n:${n}" role="img" aria-label="${esc(t.uptimeOver(c.name, pct(c.uptime), n, size))}">${c.days.map((d) => bar(d, page, t, f)).join("")}</div>
+  <div class="row muted small"><span>${ago}</span><span class="num">${pct(c.uptime)} ${t.uptime}</span>${latency}<span>${t.now(size)}</span></div>
 </li>`;
 }
 
-function bar(d: PublicDay, page: PublicStatusPage): string {
+function bar(d: PublicDay, page: PublicStatusPage, t: Text, f: Formats): string {
   const tone = d.uptime === null ? "none" : d.uptime * 100 >= page.okPct ? "up" : d.uptime * 100 >= page.warnPct ? "warn" : "down";
-  const label = d.uptime === null ? "No data" : `${pct(d.uptime)} uptime, ${d.checks} checks`;
-  return `<span class="bar ${tone}" tabindex="0"><span class="tip"><b>${date(d.day)}</b>${label}</span></span>`;
+  const label = d.uptime === null ? t.noData : t.checks(pct(d.uptime), d.checks);
+  const when = page.barSize === "hour" ? f.hour(d.day) : f.date(d.day);
+  return `<span class="bar ${tone}" tabindex="0"><span class="tip"><b>${when}</b>${label}</span></span>`;
 }
 
-function incident(i: PublicIncident, active: boolean): string {
+function incident(i: PublicIncident, active: boolean, t: Text, f: Formats): string {
   const updates = i.updates
-    .map((u) => `<li><b>${esc(capitalize(u.status))}</b> <span class="muted">${time(u.createdAt)}</span><p>${esc(u.body)}</p></li>`)
+    .map((u) => `<li><b>${t.update[u.status]}</b> <span class="muted">${f.time(u.createdAt)}</span><p>${esc(u.body)}</p></li>`)
     .join("");
-  const when = active ? `Since ${dateTime(i.startedAt)}` : `${dateTime(i.startedAt)} · lasted ${lasted(i.startedAt, i.resolvedAt!)}`;
+  const when = active
+    ? `${t.since} ${f.dateTime(i.startedAt)}`
+    : `${f.dateTime(i.startedAt)} · ${t.lasted} ${lasted(i.startedAt, i.resolvedAt!)}`;
   return `<article class="incident ${active ? (i.kind === "slow" ? "warn" : "down") : "past"}">
-  <h3>${esc(i.componentName)}: ${esc(i.kind === "slow" ? "slow responses" : i.title)}</h3>
+  <h3>${esc(i.componentName)}: ${esc(i.kind === "slow" ? t.slow : i.title)}</h3>
   <p class="muted small">${when}</p>
   ${updates ? `<ul class="updates">${updates}</ul>` : ""}
 </article>`;
 }
 
-function maintenance(m: PublicMaintenance): string {
+function maintenance(m: PublicMaintenance, t: Text, f: Formats): string {
   return `<article class="incident info">
-  <h3>${m.active ? "Maintenance in progress" : "Scheduled maintenance"}: ${esc(m.name)}</h3>
-  <p class="muted small">${dateTime(m.startsAt)} – ${dateTime(m.endsAt)} UTC · ${esc(m.componentNames.join(", "))}</p>
+  <h3>${m.active ? t.maintenanceNow : t.maintenanceLater}: ${esc(m.name)}</h3>
+  <p class="muted small">${f.dateTime(m.startsAt)} – ${f.dateTime(m.endsAt)} ${esc(f.zone)} · ${esc(m.componentNames.join(", "))}</p>
 </article>`;
 }
 
@@ -120,32 +247,45 @@ function pct(ratio: number | null): string {
   return ratio === null ? "—" : `${(Math.floor(ratio * 10_000) / 100).toFixed(2)}%`;
 }
 
-function date(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-}
+type Formats = {
+  zone: string;
+  /** The page's zone label when days are cut in a zone other than the one times are shown in. */
+  dayZone: string | null;
+  date: (day: string) => string;
+  hour: (iso: string) => string;
+  dateTime: (iso: string) => string;
+  time: (iso: string) => string;
+};
 
-function dateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: "UTC",
-  });
-}
-
-function time(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
+/**
+ * Dates and times in the page's language. A daily bar's date is already the page's local date, so
+ * it is shown as is; times of day are shown in `timeZone`, the visitor's when known.
+ */
+function formats(page: PublicStatusPage, timeZone: string): Formats {
+  const lang = page.language;
+  const clock = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } as const;
+  const day = new Intl.DateTimeFormat(lang, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const hour = new Intl.DateTimeFormat(lang, { month: "short", day: "numeric", ...clock, timeZone });
+  const time = new Intl.DateTimeFormat(lang, { ...clock, timeZone });
+  const label = (zone: string) =>
+    new Intl.DateTimeFormat(lang, { timeZone: zone, timeZoneName: "short" })
+      .formatToParts(new Date(page.updatedAt))
+      .find((p) => p.type === "timeZoneName")?.value ?? zone;
+  const zone = label(timeZone);
+  const pageZone = label(page.timeZone);
+  return {
+    zone,
+    dayZone: pageZone === zone ? null : pageZone,
+    date: (d) => day.format(new Date(`${d}T00:00:00Z`)),
+    hour: (iso) => hour.format(new Date(iso)),
+    dateTime: (iso) => hour.format(new Date(iso)),
+    time: (iso) => time.format(new Date(iso)),
+  };
 }
 
 function lasted(from: string, to: string): string {
   const minutes = Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60_000));
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function esc(text: string): string {

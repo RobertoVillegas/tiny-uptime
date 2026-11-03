@@ -1,4 +1,4 @@
-import { SLUG, type PublicStatusPage } from "@tiny-uptime/contracts";
+import { HISTORY_RANGES, isTimeZone, SLUG, type HistoryRange, type PublicStatusPage } from "@tiny-uptime/contracts";
 import { renderStatusFeed } from "../../html/status-feed";
 import { renderStatusPage } from "../../html/status-page";
 import { workspaceStub } from "../principal";
@@ -32,7 +32,9 @@ export function publicRoutes(router: Router): void {
 }
 
 async function page(c: Ctx, target: PublicTarget | null, format: "html" | "json" | "rss"): Promise<Response> {
-  const status: PublicStatusPage | null = target ? await workspaceStub(c, target.workspaceId).publicPage(target.pageId) : null;
+  const status: PublicStatusPage | null = target
+    ? await workspaceStub(c, target.workspaceId).publicPage(target.pageId, format === "rss" ? undefined : rangeOf(c.url))
+    : null;
   if (!status) return failWith(404, "not_found", "status page not found");
   if (format === "json") return json(200, status, { "cache-control": PUBLIC_CACHE, "access-control-allow-origin": "*" });
   if (format === "rss") {
@@ -42,15 +44,28 @@ async function page(c: Ctx, target: PublicTarget | null, format: "html" | "json"
     });
   }
   const feedPath = c.url.pathname === "/" ? null : `${c.url.pathname}/rss`;
-  return new Response(renderStatusPage(status, { feedPath }), {
+  return new Response(renderStatusPage(status, { feedPath, path: c.url.pathname, viewerZone: viewerZone(c.request) }), {
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": PUBLIC_CACHE,
+      // Times are in the visitor's zone, so no shared cache may hand one visitor's page to another.
+      "cache-control": "private, max-age=30",
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
     },
   });
+}
+
+/** The visitor's time zone, as Cloudflare places their IP; absent locally and for some networks. */
+function viewerZone(request: Request): string | null {
+  const zone = (request.cf as { timezone?: unknown } | undefined)?.timezone;
+  return typeof zone === "string" && isTimeZone(zone) ? zone : null;
+}
+
+/** The range a visitor picked with `?days=`, if it is one a page offers. */
+function rangeOf(url: URL): HistoryRange | undefined {
+  const days = Number(url.searchParams.get("days"));
+  return (HISTORY_RANGES as readonly number[]).includes(days) ? (days as HistoryRange) : undefined;
 }
 
 function resolveSlug(c: Ctx, slug: string): Promise<PublicTarget | null> {

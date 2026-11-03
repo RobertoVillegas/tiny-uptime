@@ -15,7 +15,7 @@ type Row = {
 const DAY = 24 * HOUR;
 
 /**
- * One row per monitor and hour, plus one per monitor and day for status pages' 90-day bars:
+ * One row per monitor and hour, plus one per monitor and day for status pages' daily bars:
  * a check costs two upserts, and a page reads 90 rows per monitor instead of 2,160.
  */
 export class SqliteHistory implements HistoryRepository {
@@ -55,6 +55,18 @@ export class SqliteHistory implements HistoryRepository {
       )
       .toArray()
       .map((r) => ({ monitorId: r.monitor_id, day: r.day, checks: r.checks, ok: r.ok }));
+  }
+
+  hourlyFor(monitorIds: string[], since: number): { monitorId: string; hour: number; checks: number; ok: number }[] {
+    if (monitorIds.length === 0) return [];
+    return this.sql
+      .exec<{ monitor_id: string; hour: number; checks: number; ok: number }>(
+        `SELECT monitor_id, hour, checks, ok FROM rollup WHERE hour >= ? AND monitor_id IN (${monitorIds.map(() => "?").join(", ")})`,
+        since,
+        ...monitorIds,
+      )
+      .toArray()
+      .map((r) => ({ monitorId: r.monitor_id, hour: r.hour, checks: r.checks, ok: r.ok }));
   }
 
   hourly(monitorId: string, since: number): HourlyPoint[] {
