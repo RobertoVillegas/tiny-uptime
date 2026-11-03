@@ -16,7 +16,7 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure", contextOptions: { reducedMotion: "reduce" } },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `rm -rf .wrangler/e2e && pnpm --filter @tiny-uptime/worker exec wrangler dev --port ${PORT} --ip localhost --persist-to ../panel/.wrangler/e2e --var ADMIN_TOKEN:e2e-operator-token --var PUBLIC_SLUG:e2e`,
+    command: `rm -rf .wrangler/e2e && pnpm --filter @tiny-uptime/worker exec wrangler dev --port ${PORT} --ip localhost --local-upstream localhost:${PORT} --persist-to ../panel/.wrangler/e2e --var ADMIN_TOKEN:e2e-operator-token --var PUBLIC_SLUG:e2e`,
     url: `http://localhost:${PORT}/app/login`,
     reuseExistingServer: false,
     timeout: 60_000,
