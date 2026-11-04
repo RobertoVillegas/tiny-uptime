@@ -79,14 +79,14 @@ OpenUptime remains the reference for features. tiny-uptime sends alerts in OpenU
 
 ### Which one should you use?
 
-| | tiny-uptime | OpenUptime |
-| --- | --- | --- |
-| Runs on | One Cloudflare Worker with Durable Objects | Cloudflare Workers with Postgres, or Docker |
-| Database | SQLite inside each workspace's Durable Object | Postgres |
-| Cost for a few dozen monitors | Cloudflare's free plan | Free plan plus a Postgres host |
-| Teams | Workspaces with roles | Workspaces, projects, roles and assignment |
-| Hosted version | No | Yes |
-| Mobile app | No | iOS, with push notifications |
+|                               | tiny-uptime                                   | OpenUptime                                  |
+| ----------------------------- | --------------------------------------------- | ------------------------------------------- |
+| Runs on                       | One Cloudflare Worker with Durable Objects    | Cloudflare Workers with Postgres, or Docker |
+| Database                      | SQLite inside each workspace's Durable Object | Postgres                                    |
+| Cost for a few dozen monitors | Cloudflare's free plan                        | Free plan plus a Postgres host              |
+| Teams                         | Workspaces with roles                         | Workspaces, projects, roles and assignment  |
+| Hosted version                | No                                            | Yes                                         |
+| Mobile app                    | No                                            | iOS, with push notifications                |
 
 Pick OpenUptime if you want Postgres, a hosted service, projects within a team or an iOS app. Pick tiny-uptime if you want the smallest thing that runs on Cloudflare alone.
 
@@ -152,12 +152,12 @@ Heartbeat monitors return a `heartbeatUrl`; send a GET or POST to it from your j
 
 ### Status pages
 
-| Path | What it serves |
-| --- | --- |
-| `/s/<slug>` | The page |
-| `/api/public/<slug>` | The same data as JSON |
-| `/s/<slug>/rss` | Incidents as RSS |
-| `/s/<slug>/badge.svg` | A status badge |
+| Path                  | What it serves        |
+| --------------------- | --------------------- |
+| `/s/<slug>`           | The page              |
+| `/api/public/<slug>`  | The same data as JSON |
+| `/s/<slug>/rss`       | Incidents as RSS      |
+| `/s/<slug>/badge.svg` | A status badge        |
 
 `?days=` picks the range (1, 7, 14, 30, 45 or 90), `?tz=utc` cuts days and shows times in UTC, and `?day=2026-11-02` or `?days=7&hour=2026-11-03T14` opens one bar. A page on a custom domain serves all of these at its root.
 
@@ -192,14 +192,14 @@ Each region costs one Durable Object request per check: a monitor every `interva
 
 ## How it works
 
-| Part | What it is |
-| --- | --- |
-| `apps/worker` | The Cloudflare side: Worker entry, Durable Objects, SQLite repositories, checks, alert channels, MCP, passkeys and HTTP routes |
-| `apps/panel` | The private panel at `/app`: React 19 and TanStack Router, Query and Form, built by Vite and served as static assets |
-| `packages/core` | Domain rules and use cases, with no Cloudflare APIs: the monitor state machine, schedules, incidents, roles and TOTP |
-| `packages/contracts` | API schemas (Valibot) and response types, shared by the worker and every client |
-| `packages/client` | A typed API client, used by the panel and reusable by other apps |
-| `packages/ui` | The panel's components: Base UI, Tailwind 4 and OKLCH tokens |
+| Part                 | What it is                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/worker`        | The Cloudflare side: Worker entry, Durable Objects, SQLite repositories, checks, alert channels, MCP, passkeys and HTTP routes |
+| `apps/panel`         | The private panel at `/app`: React 19 and TanStack Router, Query and Form, built by Vite and served as static assets           |
+| `packages/core`      | Domain rules and use cases, with no Cloudflare APIs: the monitor state machine, schedules, incidents, roles and TOTP           |
+| `packages/contracts` | API schemas (Valibot) and response types, shared by the worker and every client                                                |
+| `packages/client`    | A typed API client, used by the panel and reusable by other apps                                                               |
+| `packages/ui`        | The panel's components: Base UI, Tailwind 4 and OKLCH tokens                                                                   |
 
 Dependencies point inward: `domain` imports nothing, `application` imports `domain` and `ports`, and only `apps/worker` knows about Cloudflare. `pnpm check:boundaries` enforces this on every import. Use cases return `Result` values from [better-result](https://github.com/dmmulroy/better-result) with tagged errors, and `apps/worker/src/adapters/http/respond.ts` is the one place an error becomes an HTTP status.
 
@@ -211,21 +211,21 @@ Tests follow the layers. `packages/core/test` checks the domain rules in plain N
 
 `pnpm budget` enforces these in CI:
 
-| | Budget | Now |
-| --- | --- | --- |
-| Worker bundle (gzip, minified) | 100 KiB | 80 KiB |
-| Startup CPU (local profile, median of 5) | 10 ms | ~7 ms |
+|                                          | Budget  | Now    |
+| ---------------------------------------- | ------- | ------ |
+| Worker bundle (gzip, minified)           | 100 KiB | 80 KiB |
+| Startup CPU (local profile, median of 5) | 10 ms   | ~7 ms  |
 
 Measured on Cloudflare: 0–1 ms of CPU per heartbeat, 1–2 ms per status page, 2–4 ms per round of checks.
 
 ### Free plan limits
 
-| Limit (per day) | Free plan | Expected with ~16 monitors |
-| --- | --- | --- |
-| Worker requests (shared by the account) | 100,000 | heartbeats, API calls and page views |
-| Durable Object requests (alarms included) | 100,000 | ~7,000–10,000 |
-| SQLite rows written | 100,000 | ~15,000–30,000 |
-| Durable Object duration | 13,000 GB-s | under 11,000 even if never idle |
+| Limit (per day)                           | Free plan   | Expected with ~16 monitors           |
+| ----------------------------------------- | ----------- | ------------------------------------ |
+| Worker requests (shared by the account)   | 100,000     | heartbeats, API calls and page views |
+| Durable Object requests (alarms included) | 100,000     | ~7,000–10,000                        |
+| SQLite rows written                       | 100,000     | ~15,000–30,000                       |
+| Durable Object duration                   | 13,000 GB-s | under 11,000 even if never idle      |
 
 Writes past the free limit fail instead of being billed. To stay well under it, a check writes three rows (the monitor, its hourly rollup and its daily rollup), and an API key's last use is written at most once an hour.
 
