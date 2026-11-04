@@ -22,6 +22,7 @@ export async function sendTeams(channel: ChannelOf<"teams">, event: AlertEvent):
           type: "AdaptiveCard",
           version: "1.2",
           body: [{ type: "TextBlock", text: clip(escapeMarkdown(formatAlert(event).text), TEAMS_LIMIT), wrap: true }],
+          ...(event.link ? { actions: [{ type: "Action.OpenUrl", title: "View incident", url: event.link }] } : {}),
           msteams: { width: "Full" },
         },
       },

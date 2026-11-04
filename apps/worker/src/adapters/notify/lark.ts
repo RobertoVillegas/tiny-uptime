@@ -8,7 +8,8 @@ import { postJson, rejected } from "./send";
  * and a timestamp in seconds that is less than an hour old.
  */
 export async function sendLark(channel: ChannelOf<"lark">, event: AlertEvent, now = Date.now()): Promise<Result<void, DeliveryFailed>> {
-  const body: Record<string, unknown> = { msg_type: "text", content: { text: formatAlert(event).text } };
+  const text = formatAlert(event).text;
+  const body: Record<string, unknown> = { msg_type: "text", content: { text: event.link ? `${text}\n${event.link}` : text } };
   if (channel.secret) {
     const timestamp = String(Math.floor(now / 1000));
     body.timestamp = timestamp;

@@ -10,5 +10,7 @@ import { clip } from "./text";
 export function sendDiscord(channel: ChannelOf<"discord">, event: AlertEvent): Promise<Result<void, DeliveryFailed>> {
   const endpoint = new URL(channel.url);
   endpoint.searchParams.set("wait", "true");
-  return deliverJson(endpoint.href, { content: clip(formatAlert(event).text, 2000), allowed_mentions: { parse: [] } });
+  // Angle brackets keep Discord from unfurling the panel's page under the alert.
+  const link = event.link ? `\n[View incident](<${event.link}>)` : "";
+  return deliverJson(endpoint.href, { content: clip(formatAlert(event).text, 2000 - link.length) + link, allowed_mentions: { parse: [] } });
 }

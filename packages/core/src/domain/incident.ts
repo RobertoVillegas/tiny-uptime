@@ -30,6 +30,8 @@ export type AlertEvent = {
   /** Which reminder this is, or the escalation level. */
   count?: number;
   test?: true;
+  /** Where the incident is in the panel, when the server knows its public address. */
+  link?: string;
 };
 
 /** When an open incident nobody acknowledged gets repeated, and when it goes to the escalation channels. */

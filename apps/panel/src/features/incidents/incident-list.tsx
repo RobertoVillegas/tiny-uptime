@@ -6,6 +6,7 @@ import { StatusDot } from "@tiny-uptime/ui/components/status";
 import { EmptyState, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { notify } from "@tiny-uptime/ui/components/toast";
 import { Check, CircleCheck } from "lucide-react";
+import { useCallback } from "react";
 import { api, currentWorkspaceId } from "../../lib/api";
 import { dateTime, duration } from "../../lib/format";
 import { incidentsQuery } from "../../lib/queries";
@@ -17,10 +18,13 @@ export function IncidentList({
   monitorId,
   emptyText,
   showMonitor = false,
+  focusId,
 }: {
   monitorId?: string;
   emptyText: string;
   showMonitor?: boolean;
+  /** An incident to highlight and scroll to, as alerts link to it. */
+  focusId?: string;
 }) {
   const incidents = useQuery(incidentsQuery(monitorId));
   const { me } = authedRoute.useRouteContext();
@@ -38,13 +42,29 @@ export function IncidentList({
   return (
     <ul className="divide-y divide-border">
       {list.map((i) => (
-        <IncidentRow key={i.id} incident={i} showMonitor={showMonitor} canAcknowledge={canWrite} />
+        <IncidentRow key={i.id} incident={i} showMonitor={showMonitor} canAcknowledge={canWrite} focused={i.id === focusId} />
       ))}
     </ul>
   );
 }
 
-function IncidentRow({ incident: i, showMonitor, canAcknowledge }: { incident: Incident; showMonitor: boolean; canAcknowledge: boolean }) {
+function IncidentRow({
+  incident: i,
+  showMonitor,
+  canAcknowledge,
+  focused,
+}: {
+  incident: Incident;
+  showMonitor: boolean;
+  canAcknowledge: boolean;
+  focused: boolean;
+}) {
+  const scrollTo = useCallback(
+    (el: HTMLLIElement | null) => {
+      if (el && focused) el.scrollIntoView({ block: "center" });
+    },
+    [focused],
+  );
   const queryClient = useQueryClient();
   const acknowledge = useMutation({
     mutationFn: () => api.incidents.acknowledge(i.id),
@@ -55,7 +75,11 @@ function IncidentRow({ incident: i, showMonitor, canAcknowledge }: { incident: I
   });
   const open = i.resolvedAt === null;
   return (
-    <li className="flex flex-wrap items-start gap-3 px-5 py-3.5">
+    <li
+      ref={scrollTo}
+      aria-current={focused ? "true" : undefined}
+      className="flex flex-wrap items-start gap-3 px-5 py-3.5 aria-[current]:bg-subtle aria-[current]:shadow-[inset_3px_0_0_var(--color-primary)]"
+    >
       <StatusDot status={open ? (i.kind === "slow" ? "degraded" : "down") : "up"} className="mt-1.5" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="font-medium">

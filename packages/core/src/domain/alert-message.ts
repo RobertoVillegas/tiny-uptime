@@ -64,7 +64,8 @@ export function formatAlert(event: AlertEvent): AlertMessage {
         : "Checks are passing again and the incident is resolved.";
       break;
   }
-  return { tone, title, emoji, text, body: [intro, "", ...rows(event)].join("\n") };
+  const link = event.link ? ["", `View incident: ${event.link}`] : [];
+  return { tone, title, emoji, text, body: [intro, "", ...rows(event), ...link].join("\n") };
 }
 
 function rows(event: AlertEvent): string[] {

@@ -3,6 +3,7 @@ import { env as runtimeEnv, exports } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AlertEvent } from "@tiny-uptime/core";
 import { sendEmail } from "../src/adapters/notify/email";
+import { createNotifier } from "../src/adapters/notify/notifier";
 import { sendNtfy } from "../src/adapters/notify/ntfy";
 import { sendSlack } from "../src/adapters/notify/slack";
 import { sendTeams } from "../src/adapters/notify/teams";
@@ -334,12 +335,14 @@ describe("PagerDuty", () => {
         routing_key: ROUTING_KEY,
         event_action: "trigger",
         dedup_key: incident.id,
+        links: [{ href: `https://uptime.athas.mx/app/incidents?incident=${incident.id}`, text: "View incident" }],
         payload: { summary: "🔴 Site is down — HTTP 503", source: "https://site.test/", severity: "critical" },
       },
       {
         routing_key: ROUTING_KEY,
         event_action: "resolve",
         dedup_key: incident.id,
+        links: [{ href: `https://uptime.athas.mx/app/incidents?incident=${incident.id}`, text: "View incident" }],
         payload: { summary: "✅ Site has recovered", source: "https://site.test/", severity: "critical" },
       },
     ]);
@@ -431,5 +434,29 @@ describe("message text per channel", () => {
       event("Site"),
     );
     expect(refused.isErr() && refused.error.message).toBe("email to ops@example.com: sender not verified");
+  });
+});
+
+describe("links to the incident", () => {
+  const base = { id: "c", name: "c", enabled: true, createdAt: 0 };
+  const notifier = createNotifier({ APP_URL: "https://up.example/" });
+  const link = "https://up.example/app/incidents?incident=inc1";
+
+  it("adds a link in each channel's own form when APP_URL is set", async () => {
+    await notifier.send({ ...base, type: "slack", url: "https://hooks.slack.example/x" }, event("Site"));
+    expect(sent.at(-1)!.body.text).toBe(`🔴 Site is down — HTTP 503 · <${link}|View incident>`);
+    await notifier.send({ ...base, type: "discord", url: "https://discord.example/api/webhooks/1/x" }, event("Site"));
+    expect(sent.at(-1)!.body.content).toBe(`🔴 Site is down — HTTP 503\n[View incident](<${link}>)`);
+    await notifier.send({ ...base, type: "webhook", url: "https://hooks.example/x" }, event("Site"));
+    expect(sent.at(-1)!.body.url).toBe(link);
+    await notifier.send({ ...base, type: "pagerduty", routingKey: ROUTING_KEY }, event("Site"));
+    expect(sent.at(-1)!.body.links).toEqual([{ href: link, text: "View incident" }]);
+  });
+
+  it("sends no link without APP_URL or on a test", async () => {
+    await createNotifier({}).send({ ...base, type: "webhook", url: "https://hooks.example/x" }, event("Site"));
+    expect(sent.at(-1)!.body.url).toBeUndefined();
+    await notifier.send({ ...base, type: "webhook", url: "https://hooks.example/x" }, { ...event("Site"), test: true });
+    expect(sent.at(-1)!.body.url).toBeUndefined();
   });
 });

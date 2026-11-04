@@ -55,9 +55,11 @@ const monitor = createRoute({
   path: "/monitors/$monitorId",
   component: lazyRouteComponent(() => import("./features/monitors/monitor-page"), "MonitorPage"),
 });
-const incidents = createRoute({
+/** `?incident=` is where alerts link: that incident is highlighted and scrolled to. */
+export const incidentsRoute = createRoute({
   getParentRoute: () => authed,
   path: "/incidents",
+  validateSearch: v.object({ incident: v.optional(v.string()) }),
   component: lazyRouteComponent(() => import("./features/incidents/incidents-page"), "IncidentsPage"),
 });
 const statusPages = createRoute({
@@ -95,7 +97,7 @@ const routeTree = root.addChildren([
   login,
   invite,
   recover,
-  authed.addChildren([index, monitors, monitor, incidents, statusPages, statusPage, maintenance, channels, settings, account]),
+  authed.addChildren([index, monitors, monitor, incidentsRoute, statusPages, statusPage, maintenance, channels, settings, account]),
 ]);
 
 export function createAppRouter(queryClient: QueryClient) {

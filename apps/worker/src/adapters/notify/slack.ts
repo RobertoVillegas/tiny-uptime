@@ -9,5 +9,6 @@ const RESERVED: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;
  * characters Slack reserves are escaped and a monitor name cannot ping anyone.
  */
 export function sendSlack(channel: ChannelOf<"slack">, event: AlertEvent): Promise<Result<void, DeliveryFailed>> {
-  return deliverJson(channel.url, { text: formatAlert(event).text.replace(/[&<>]/g, (c) => RESERVED[c]!) });
+  const text = formatAlert(event).text.replace(/[&<>]/g, (c) => RESERVED[c]!);
+  return deliverJson(channel.url, { text: event.link ? `${text} · <${event.link}|View incident>` : text });
 }

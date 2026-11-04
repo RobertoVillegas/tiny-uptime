@@ -14,7 +14,13 @@ export function sendNtfy(channel: ChannelOf<"ntfy">, event: AlertEvent): Promise
   const message = formatAlert(event);
   return deliverJson(
     new URL("/", channel.url).href,
-    { topic: channel.topic, title: message.title, message: clipBytes(message.text, NTFY_MAX_BYTES), priority: channel.priority },
+    {
+      topic: channel.topic,
+      title: message.title,
+      message: clipBytes(message.text, NTFY_MAX_BYTES),
+      priority: channel.priority,
+      ...(event.link ? { click: event.link, actions: [{ action: "view", label: "View incident", url: event.link }] } : {}),
+    },
     { redirect: "manual", ...(channel.token ? { headers: { authorization: `Bearer ${channel.token}` } } : {}) },
   );
 }

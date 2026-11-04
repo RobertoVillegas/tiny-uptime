@@ -14,6 +14,7 @@ export async function sendTelegram(channel: ChannelOf<"telegram">, event: AlertE
     chat_id: channel.chatId,
     text: clip(formatAlert(event).text, 4096),
     link_preview_options: { is_disabled: true },
+    ...(event.link ? { reply_markup: { inline_keyboard: [[{ text: "View incident", url: event.link }]] } } : {}),
   });
   if (sent.isErr()) return Result.err(sent.error);
   const res = sent.value;

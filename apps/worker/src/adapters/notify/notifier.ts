@@ -9,10 +9,16 @@ import { sendTeams } from "./teams";
 import { sendTelegram } from "./telegram";
 import { sendWebhook } from "./webhook";
 
-/** Sends each alert the way its channel's type expects. Only email needs anything from the environment. */
-export function createNotifier(env: EmailSetup): Notifier {
+/** The panel's public address (`https://uptime.example.com`); alerts link to the incident there. */
+export type LinkSetup = { APP_URL?: string };
+
+/** Sends each alert the way its channel's type expects, with a link to the incident when `APP_URL` is set. */
+export function createNotifier(env: EmailSetup & LinkSetup): Notifier {
+  const base = env.APP_URL?.replace(/\/+$/, "");
   return {
-    send(channel, event) {
+    send(channel, alert) {
+      const event =
+        base && !alert.test ? { ...alert, link: `${base}/app/incidents?incident=${encodeURIComponent(alert.incident.id)}` } : alert;
       switch (channel.type) {
         case "webhook":
           return sendWebhook(channel, event);

@@ -22,5 +22,6 @@ export function sendPagerDuty(channel: ChannelOf<"pagerduty">, event: AlertEvent
       source: event.monitor.target || event.monitor.name,
       severity: event.slow ? "warning" : "critical",
     },
+    ...(event.link ? { links: [{ href: event.link, text: "View incident" }] } : {}),
   });
 }

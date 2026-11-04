@@ -18,6 +18,7 @@ export function toOpenUptimePayload(event: AlertEvent) {
       resolvedAt: iso(event.incident.resolvedAt),
     },
     monitor: event.monitor,
+    ...(event.link ? { url: event.link } : {}),
     ...(event.test ? { test: true } : {}),
   };
 }

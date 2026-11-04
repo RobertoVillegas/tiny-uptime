@@ -16,4 +16,6 @@ export interface Env {
   EMAIL?: SendEmail;
   /** The verified address email alerts are sent from. */
   EMAIL_FROM?: string;
+  /** This server's public address; alerts link to the incident in the panel there. */
+  APP_URL?: string;
 }
