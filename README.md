@@ -66,7 +66,17 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
   claude mcp add --transport http tiny-uptime https://<host>/mcp --header "Authorization: Bearer tu_…"
   ```
 
-Next: multi-region checks. The goal is feature parity with OpenUptime.
+- Multi-region checks: a monitor can list `regions` to check from (see below).
+
+## Multi-region checks
+
+A monitor with `regions` (any of `wnam`, `enam`, `weur`, `eeur`, `apac`, `oc`) is checked from each of them at once instead of from the workspace's own location. A `Probe` Durable Object per region runs the same checks as the workspace and returns the outcome over RPC; it keeps no state. Heartbeats and domain expiry take no regions, since where they are checked from changes nothing.
+
+- The run fails when a strict majority of the regions that answered failed, so one location's bad route opens no incident. A probe that throws or does not answer within the monitor's timeout plus 5 seconds is left out of the vote; if none answers, the monitor is checked from the workspace, as without regions.
+- Each run records one check in the history, whatever the number of regions, so uptime and stats mean the same as before. Its latency is the median of the regions on the winning side, and its detail says who saw what: `HTTP 503 from weur, apac; up from enam`. An incident's cause is that detail.
+- Probes are placed with a [location hint](https://developers.cloudflare.com/durable-objects/reference/data-location/), which Cloudflare honours only when `get()` first creates the object, and only as best effort: the probe lands in a data center near the region and stays there. South America, Africa and the Middle East are not offered because Durable Objects hinted there are created in a nearby region instead.
+
+Each region costs one Durable Object request per check: a monitor every `intervalSec` seconds in `n` regions adds `n × 86,400 / intervalSec` requests a day, plus one per region for every 20-second retry while a failure or recovery is being confirmed. One monitor every minute in three regions adds 4,320 a day; every five minutes, 864. Twenty one-minute monitors in three regions, or a hundred five-minute ones, add 86,400: most of the free plan's 100,000 a day. Probe duration is billed only while a check runs (about 0.04 GB-s for a check of 300 ms), far below the daily 13,000 GB-s.
 
 ## Run
 
