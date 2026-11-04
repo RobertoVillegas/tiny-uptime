@@ -10,6 +10,7 @@ import { api } from "../../lib/api";
 import { maintenanceQuery, monitorsQuery } from "../../lib/queries";
 import { PageHeader } from "../shell/page-header";
 import { MaintenanceForm } from "./maintenance-form";
+import { hourOptions } from "../../lib/clock";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -118,7 +119,7 @@ function WindowList({ windows, onEdit }: { windows: Maintenance[]; onEdit: (w: M
 function schedule(w: Maintenance): string {
   const tz = w.recurrence?.timezone;
   const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) =>
-    new Date(iso).toLocaleString(undefined, { ...opts, ...(tz ? { timeZone: tz } : {}) });
+    new Date(iso).toLocaleString(undefined, { ...opts, ...hourOptions(), ...(tz ? { timeZone: tz } : {}) });
   if (!w.recurrence)
     return `${fmt(w.startsAt, { dateStyle: "medium", timeStyle: "short" })} – ${fmt(w.endsAt, { dateStyle: "medium", timeStyle: "short" })}`;
   const times = `${fmt(w.startsAt, { timeStyle: "short" })}–${fmt(w.endsAt, { timeStyle: "short" })}`;

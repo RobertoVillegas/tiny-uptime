@@ -3,12 +3,14 @@ import { Button } from "@tiny-uptime/ui/components/button";
 import { ConfirmDialog, Dialog } from "@tiny-uptime/ui/components/dialog";
 import { Field } from "@tiny-uptime/ui/components/field";
 import { Input } from "@tiny-uptime/ui/components/input";
+import { Select } from "@tiny-uptime/ui/components/select";
 import { CodeInput } from "@tiny-uptime/ui/components/otp";
 import { Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { notify } from "@tiny-uptime/ui/components/toast";
 import { KeyRound, Plug, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { api, messageOf } from "../../lib/api";
+import { CLOCKS, storeClock, storedClock, type Clock } from "../../lib/clock";
 import { timeAgo } from "../../lib/format";
 import { createPasskey } from "../../lib/passkeys";
 import { meQuery } from "../../lib/queries";
@@ -28,6 +30,7 @@ export function AccountPage() {
         <RecoverySection left={me.data.recoveryCodesLeft} />
         <ConnectedAppsSection />
         <SessionsSection />
+        <PreferencesSection />
       </div>
     </>
   );
@@ -343,6 +346,27 @@ function ConnectedAppsSection() {
           ))}
         </ul>
       ) : null}
+    </Section>
+  );
+}
+
+function PreferencesSection() {
+  const [clock, setClock] = useState<Clock>(storedClock);
+  return (
+    <Section id="preferences" title="Preferences" description="Kept in this browser.">
+      <Field label="Clock" description="How times show across the panel.">
+        <div className="w-56">
+          <Select
+            label="Clock"
+            value={clock}
+            onValueChange={(next) => {
+              storeClock(next);
+              setClock(next);
+            }}
+            options={CLOCKS}
+          />
+        </div>
+      </Field>
     </Section>
   );
 }

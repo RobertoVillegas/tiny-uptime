@@ -26,6 +26,7 @@ import { ApiError, api, messageOf } from "../../lib/api";
 import { monitorsQuery, statusPageQuery, statusPagesQuery } from "../../lib/queries";
 import { statusPageRoute } from "../../router";
 import { NotFound } from "../shell/not-found";
+import { hourOptions } from "../../lib/clock";
 
 type Draft = Required<
   Pick<StatusPageDraft, "title" | "slug" | "description" | "theme" | "language" | "timeZone" | "showLatency" | "hideBranding">
@@ -377,7 +378,7 @@ function Editor({ page }: { page: StatusPage | undefined }) {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
               <p className="max-w-prose text-muted-foreground">
                 {page.historyResetAt
-                  ? `History starts ${new Date(page.historyResetAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}. Earlier bars and incidents are hidden, not deleted.`
+                  ? `History starts ${new Date(page.historyResetAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", ...hourOptions() })}. Earlier bars and incidents are hidden, not deleted.`
                   : "Resetting starts the bars and uptime over from this hour and hides older incidents. Nothing is deleted."}
               </p>
               <div className="flex gap-2">

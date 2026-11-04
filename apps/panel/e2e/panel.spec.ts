@@ -425,3 +425,35 @@ test("monitors are exported to a file and imported from it with a preview", asyn
   const file = JSON.parse(await (await (await download).createReadStream()).toArray().then((chunks) => Buffer.concat(chunks).toString()));
   expect(file.monitors.map((m: { name: string }) => m.name).toSorted()).toEqual(["Backups", "Shop"]);
 });
+
+test("times follow the clock chosen on the account page", async ({ page, request }) => {
+  const workspace = await (
+    await request.post("/api/admin/workspaces", { headers: OPERATOR, data: { name: "Clock", slug: `clock-${Date.now()}` } })
+  ).json();
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(13, 30, 0, 0);
+  await request.post("/api/v1/maintenance", {
+    headers: { authorization: `Bearer ${workspace.apiKey}` },
+    data: { name: "Afternoon window", startsAt: start.toISOString(), endsAt: new Date(start.getTime() + 30 * 60_000).toISOString() },
+  });
+  const invite = await (
+    await request.post("/api/admin/invites", { headers: OPERATOR, data: { workspaceId: workspace.id, email: "clock@example.com" } })
+  ).json();
+  await addAuthenticator(page);
+  await page.goto(new URL(invite.inviteUrl).pathname + new URL(invite.inviteUrl).search);
+  await page.getByLabel("Your name").fill("Clock");
+  await page.getByRole("button", { name: "Create passkey and join" }).click();
+  await page.getByRole("button", { name: "I saved them, continue" }).click();
+
+  await page.getByRole("link", { name: "Maintenance" }).first().click();
+  await expect(page.getByText(/1:30\s?PM – /)).toBeVisible();
+
+  await page.goto("/app/account");
+  await page.getByRole("combobox", { name: "Clock" }).click();
+  await page.getByRole("option", { name: /24-hour/ }).click();
+  await expectAccessible(page);
+  await page.getByRole("link", { name: "Maintenance" }).first().click();
+  await expect(page.getByText(/13:30 – /)).toBeVisible();
+  await expect(page.getByText(/1:30\s?PM – /)).toBeHidden();
+});

@@ -2,6 +2,7 @@ import type { Incident, MonitorStats } from "@tiny-uptime/contracts";
 import { HoverCard } from "@tiny-uptime/ui/components/hover-card";
 import { cn } from "cn";
 import { duration, percent } from "../../lib/format";
+import { hourOptions } from "../../lib/clock";
 
 const HOUR = 3_600_000;
 
@@ -118,11 +119,11 @@ function range(bin: Bin): string {
   if (bin.to - bin.from >= 24 * HOUR) return day;
   return sameDay
     ? `${day}, ${time(bin.from)} – ${time(bin.to)}`
-    : `${day}, ${time(bin.from)} – ${new Date(bin.to).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+    : `${day}, ${time(bin.from)} – ${new Date(bin.to).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", ...hourOptions() })}`;
 }
 
 function time(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", ...hourOptions() });
 }
 
 function overlapping(incidents: Incident[], bin: Bin): Incident[] {

@@ -1,3 +1,5 @@
+import { hourOptions } from "./clock";
+
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["second", 60],
@@ -20,7 +22,7 @@ export function timeAgo(iso: string | null, now = Date.now()): string {
 }
 
 export function dateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", ...hourOptions() });
 }
 
 /** 99.95% — two decimals, because the difference between 99.9 and 99.99 matters. */

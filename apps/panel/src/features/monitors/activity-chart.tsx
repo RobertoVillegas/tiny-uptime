@@ -1,6 +1,7 @@
 import type { MonitorStats } from "@tiny-uptime/contracts";
 import { cn } from "cn";
 import { useState } from "react";
+import { hourOptions } from "../../lib/clock";
 
 const HOUR = 3_600_000;
 const W = 120;
@@ -113,7 +114,7 @@ function SlotDetails({ slot, day }: { slot: Slot; day: [number, number] | null }
 }
 
 function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", ...hourOptions() });
 }
 
 /** Maps a latency to a y coordinate, leaving a little room so a flat line sits mid-height. */
