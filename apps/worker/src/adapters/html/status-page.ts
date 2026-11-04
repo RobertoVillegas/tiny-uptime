@@ -12,7 +12,7 @@ import {
   type PublicStatusPage,
   type StatusLanguage,
 } from "@tiny-uptime/contracts";
-import { STATUS_PAGE_CSS } from "./status-page-css";
+import { phoneBars, STATUS_PAGE_CSS } from "./status-page-css";
 
 /** Where "Powered by tiny-uptime" leads. */
 export const REPO_URL = "https://github.com/RobertoVillegas/tiny-uptime";
@@ -21,15 +21,16 @@ export const REPO_URL = "https://github.com/RobertoVillegas/tiny-uptime";
  * The public status page: server-rendered HTML with no JavaScript, so it loads instantly, costs the
  * Worker a millisecond, and works everywhere. Every value from the page's data is escaped. Text is
  * in the page's language. Days follow the page's zone; times of day follow the visitor's when
- * Cloudflare knows it (`viewerZone`), else the page's. `path` is where the range and bar links point;
- * each bar links to the same page with that bar opened, listing the incidents it overlapped.
+ * Cloudflare knows it (`viewerZone`), else the page's. A visitor who picks UTC gets both in UTC.
+ * `path` is where the range, zone and bar links point; each bar links to the same page with that bar
+ * opened, listing the incidents it overlapped.
  */
 export function renderStatusPage(
   page: PublicStatusPage,
   opts: { feedPath: string | null; path: string; viewerZone?: string | null },
 ): string {
   const t = TEXT[page.language];
-  const f = formats(page, opts.viewerZone ?? page.timeZone);
+  const f = page.utc ? formats(page, "UTC", "UTC") : formats(page, opts.viewerZone ?? page.timeZone, page.timeZone);
   const theme = page.theme === "auto" ? "" : ` data-theme="${page.theme}"`;
   return `<!doctype html>
 <html lang="${page.language}"${theme}>
@@ -51,6 +52,7 @@ ${opts.feedPath ? `<link rel="alternate" type="application/rss+xml" title="${esc
   ${page.externalUrl ? `<a class="link" href="${esc(page.externalUrl)}" rel="noopener">${t.visitSite}</a>` : ""}
 </header>
 ${banner(page.overall, t)}
+${counts(page, t)}
 ${page.activeIncidents.map((i) => incident(i, true, t, f)).join("")}
 ${page.maintenance.map((m) => maintenance(m, t, f)).join("")}
 ${ranges(page, opts.path, t, f)}
@@ -81,6 +83,10 @@ type Text = {
   banner: Record<OverallStatus, string>;
   state: Record<PublicComponent["status"], string>;
   range: string;
+  zonePicker: string;
+  counts: Record<Count, string>;
+  services: (n: number) => string;
+  localTime: string;
   daysIn: (zone: string) => string;
   rangeLabel: (days: HistoryRange) => string;
   ago: (n: number, size: "day" | "hour") => string;
@@ -89,6 +95,7 @@ type Text = {
   uptimeOver: (name: string, share: string, n: number, size: "day" | "hour") => string;
   noData: string;
   checks: (share: string, n: number) => string;
+  avgMs: (ms: number) => string;
   openBar: string;
   noBarIncidents: (size: "day" | "hour") => string;
   closeBar: string;
@@ -118,6 +125,10 @@ const TEXT: Record<StatusLanguage, Text> = {
     },
     state: { up: "Operational", degraded: "Slow", down: "Down", pending: "Checking", paused: "Paused" },
     range: "History",
+    zonePicker: "Time zone",
+    counts: { up: "Operational", degraded: "Slow", down: "Down", maintenance: "In maintenance" },
+    services: (n) => (n === 1 ? "1 service" : `${n} services`),
+    localTime: "Local time",
     daysIn: (zone) => `Each bar is a day in ${zone}.`,
     rangeLabel: (days) => (days === 1 ? "24 hours" : `${days} days`),
     ago: (n, size) => `${n} ${size === "hour" ? "hours" : "days"} ago`,
@@ -126,6 +137,7 @@ const TEXT: Record<StatusLanguage, Text> = {
     uptimeOver: (name, share, n, size) => `${name}: ${share} uptime over the last ${n} ${size === "hour" ? "hours" : "days"}`,
     noData: "No data",
     checks: (share, n) => `${share} uptime, ${n} checks`,
+    avgMs: (ms) => `${ms} ms average`,
     openBar: "Show incidents",
     noBarIncidents: (size) => (size === "hour" ? "No incidents in this hour." : "No incidents on this day."),
     closeBar: "Back to all incidents",
@@ -153,6 +165,10 @@ const TEXT: Record<StatusLanguage, Text> = {
     },
     state: { up: "Funciona", degraded: "Lento", down: "Caído", pending: "Revisando", paused: "En pausa" },
     range: "Historial",
+    zonePicker: "Zona horaria",
+    counts: { up: "Operativos", degraded: "Lentos", down: "Caídos", maintenance: "En mantenimiento" },
+    services: (n) => (n === 1 ? "1 servicio" : `${n} servicios`),
+    localTime: "Hora local",
     daysIn: (zone) => `Cada barra es un día en hora ${zone}.`,
     rangeLabel: (days) => (days === 1 ? "24 horas" : `${days} días`),
     ago: (n, size) => `Hace ${n} ${size === "hour" ? "horas" : "días"}`,
@@ -162,6 +178,7 @@ const TEXT: Record<StatusLanguage, Text> = {
       `${name}: ${share} disponible en ${size === "hour" ? "las últimas" : "los últimos"} ${n} ${size === "hour" ? "horas" : "días"}`,
     noData: "Sin datos",
     checks: (share, n) => `${share} disponible, ${n} revisiones`,
+    avgMs: (ms) => `${ms} ms en promedio`,
     openBar: "Ver incidentes",
     noBarIncidents: (size) => (size === "hour" ? "Sin incidentes en esta hora." : "Sin incidentes este día."),
     closeBar: "Volver a todos los incidentes",
@@ -192,9 +209,10 @@ function banner(overall: OverallStatus, t: Text): string {
   return `<div class="banner ${TONE[overall]}" role="status"><span class="dot"></span>${t.banner[overall]}</div>`;
 }
 
-/** The page at a range; the page's default range is the bare path. */
-function rangeHref(page: PublicStatusPage, path: string, days: HistoryRange): string {
-  return days === page.defaultHistoryDays ? path : `${path}?days=${days}`;
+/** The page at a range and zone; the page's default range in local time is the bare path. */
+function rangeHref(page: PublicStatusPage, path: string, days: HistoryRange, utc = page.utc): string {
+  const query = [days === page.defaultHistoryDays ? "" : `days=${days}`, utc ? "tz=utc" : ""].filter(Boolean).join("&");
+  return query ? `${path}?${query}` : path;
 }
 
 /** The page at its current range with one bar opened, scrolled to that bar's incidents. */
@@ -210,31 +228,60 @@ function ranges(page: PublicStatusPage, path: string, t: Text, f: Formats): stri
     const current = days === page.historyDays ? ` aria-current="page"` : "";
     return `<a href="${esc(href)}"${current}>${t.rangeLabel(days)}</a>`;
   };
+  const zone = (utc: boolean, label: string) =>
+    `<a href="${esc(rangeHref(page, path, page.historyDays, utc))}"${utc === page.utc ? ` aria-current="true"` : ""}>${label}</a>`;
   const note = page.barSize === "day" && f.dayZone ? `<p class="muted small zone-note">${t.daysIn(esc(f.dayZone))}</p>` : "";
-  return `<nav class="ranges" aria-label="${t.range}">${HISTORY_RANGES.map(link).join("")}</nav>${note}`;
+  return `<div class="pickers"><nav class="ranges zones" aria-label="${t.zonePicker}">${zone(false, t.localTime)}${zone(true, "UTC")}</nav><nav class="ranges" aria-label="${t.range}">${HISTORY_RANGES.map(link).join("")}</nav></div>${note}`;
 }
 
+type Count = "up" | "degraded" | "down" | "maintenance";
+const COUNTS: Count[] = ["up", "degraded", "down", "maintenance"];
+
+/**
+ * How many components are in each state, read at a glance above the groups. A component under
+ * maintenance counts there and nowhere else; checking and paused ones are left out. A page with a
+ * single component has nothing to tally, so it shows none.
+ */
+function counts(page: PublicStatusPage, t: Text): string {
+  const all = page.groups.flatMap((g) => g.components);
+  if (all.length < 2) return "";
+  const held = new Set(page.maintenance.filter((m) => m.active).flatMap((m) => m.componentNames));
+  const tally: Record<Count, number> = { up: 0, degraded: 0, down: 0, maintenance: 0 };
+  for (const c of all) {
+    if (held.has(c.name)) tally.maintenance++;
+    else if (c.status === "up" || c.status === "degraded" || c.status === "down") tally[c.status]++;
+  }
+  return `<ul class="counts">${COUNTS.map((k) => `<li${tally[k] ? ` class="${k}"` : ""}><b class="num">${tally[k]}</b>${t.counts[k]}</li>`).join("")}</ul>`;
+}
+
+/** A group visitors can fold away; it opens on every visit, so nothing stays hidden by accident. */
 function group(name: string, components: PublicComponent[], page: PublicStatusPage, path: string, t: Text, f: Formats): string {
-  return `<section class="group">
-  <h2>${esc(name)}</h2>
+  return `<details class="group" open>
+  <summary><h2>${esc(name)}</h2><span class="muted small">${t.services(components.length)}</span></summary>
   <ul class="components">${components.map((c) => component(c, page, path, t, f)).join("")}</ul>
-</section>`;
+</details>`;
+}
+
+/** How far back `bars` bars of `size` reach, in days once that is two days or more. */
+function span(bars: number, size: "day" | "hour"): [number, "day" | "hour"] {
+  return size === "hour" && bars >= 48 ? [bars / 24, "day"] : [bars, size];
 }
 
 function component(c: PublicComponent, page: PublicStatusPage, path: string, t: Text, f: Formats): string {
   const n = c.days.length;
   const size = page.barSize;
-  const long = n > 45;
+  const narrow = phoneBars(page.historyDays, n);
   const latency = page.showLatency && c.latencyMs !== null ? `<span class="muted num">${c.latencyMs} ms</span>` : "";
-  const ago = long
-    ? `<span class="wide">${t.ago(n, size)}</span><span class="narrow">${t.ago(Math.ceil(n / 2), size)}</span>`
-    : t.ago(n, size);
+  const ago =
+    narrow < n
+      ? `<span class="wide">${t.ago(...span(n, size))}</span><span class="narrow">${t.ago(...span(narrow, size))}</span>`
+      : t.ago(...span(n, size));
   return `<li class="component">
   <div class="row">
     <span class="name">${esc(c.name)}</span>
     <span class="state ${c.status}">${t.state[c.status]}</span>
   </div>
-  <div class="bars${long ? " long" : ""}" style="--n:${n}" role="group" aria-label="${esc(t.uptimeOver(c.name, pct(c.uptime), n, size))}">${c.days.map((d) => bar(d, page, path, t, f)).join("")}</div>
+  <div class="bars r${page.historyDays}" style="--n:${n}" role="group" aria-label="${esc(t.uptimeOver(c.name, pct(c.uptime), ...span(n, size)))}">${c.days.map((d) => bar(d, page, path, t, f)).join("")}</div>
   <div class="row muted small"><span>${ago}</span><span class="num">${pct(c.uptime)} ${t.uptime}</span>${latency}<span>${t.now(size)}</span></div>
 </li>`;
 }
@@ -244,7 +291,8 @@ function tone(d: PublicDay, page: PublicStatusPage): string {
 }
 
 function barLabel(d: PublicDay, t: Text): string {
-  return d.uptime === null ? t.noData : t.checks(pct(d.uptime), d.checks);
+  if (d.uptime === null) return t.noData;
+  return d.ms === null ? t.checks(pct(d.uptime), d.checks) : `${t.checks(pct(d.uptime), d.checks)}. ${t.avgMs(d.ms)}`;
 }
 
 function barWhen(day: string, page: PublicStatusPage, f: Formats): string {
@@ -256,7 +304,8 @@ function bar(d: PublicDay, page: PublicStatusPage, path: string, t: Text, f: For
   const label = barLabel(d, t);
   const when = barWhen(d.day, page, f);
   const current = page.selected?.bar === d.day ? ` aria-current="${page.barSize === "hour" ? "time" : "date"}"` : "";
-  return `<a class="bar ${tone(d, page)}" href="${esc(barHref(page, path, d.day))}" aria-label="${esc(`${when}: ${label}. ${t.openBar}`)}"${current}><span class="tip" aria-hidden="true"><b>${when}</b>${label}</span></a>`;
+  const tip = d.uptime === null ? t.noData : `${t.checks(pct(d.uptime), d.checks)}${d.ms === null ? "" : `<span>${t.avgMs(d.ms)}</span>`}`;
+  return `<a class="bar ${tone(d, page)}" href="${esc(barHref(page, path, d.day))}" aria-label="${esc(`${when}: ${label}. ${t.openBar}`)}"${current}><span class="tip" aria-hidden="true"><b>${when}</b>${tip}</span></a>`;
 }
 
 /**
@@ -323,10 +372,10 @@ type Formats = {
 };
 
 /**
- * Dates and times in the page's language. A daily bar's date is already the page's local date, so
+ * Dates and times in the page's language. A daily bar's date is already a local date in `dayZone`, so
  * it is shown as is; times of day are shown in `timeZone`, the visitor's when known.
  */
-function formats(page: PublicStatusPage, timeZone: string): Formats {
+function formats(page: PublicStatusPage, timeZone: string, dayZone: string): Formats {
   const lang = page.language;
   const clock = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } as const;
   const day = new Intl.DateTimeFormat(lang, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -337,7 +386,7 @@ function formats(page: PublicStatusPage, timeZone: string): Formats {
       .formatToParts(new Date(page.updatedAt))
       .find((p) => p.type === "timeZoneName")?.value ?? zone;
   const zone = label(timeZone);
-  const pageZone = label(page.timeZone);
+  const pageZone = label(dayZone);
   return {
     zone,
     dayZone: pageZone === zone ? null : pageZone,

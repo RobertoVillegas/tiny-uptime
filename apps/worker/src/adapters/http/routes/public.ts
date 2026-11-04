@@ -98,13 +98,14 @@ function viewerZone(request: Request): string | null {
   return typeof zone === "string" && isTimeZone(zone) ? zone : null;
 }
 
-/** The range picked with `?days=`, if it is one a page offers, and the bar opened with `?day=` or `?hour=`. */
+/** The range picked with `?days=`, if it is one a page offers, the bar opened with `?day=` or `?hour=`, and `?tz=utc`. */
 function viewOf(url: URL): PublicView {
   const view: PublicView = {};
   const days = Number(url.searchParams.get("days"));
   if ((HISTORY_RANGES as readonly number[]).includes(days)) view.days = days as HistoryRange;
   const bar = barOfQuery(url.searchParams);
   if (bar !== undefined) view.bar = bar;
+  if (url.searchParams.get("tz") === "utc") view.utc = true;
   return view;
 }
 

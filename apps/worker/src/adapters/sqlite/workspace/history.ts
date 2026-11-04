@@ -57,16 +57,16 @@ export class SqliteHistory implements HistoryRepository {
       .map((r) => ({ monitorId: r.monitor_id, day: r.day, checks: r.checks, ok: r.ok }));
   }
 
-  hourlyFor(monitorIds: string[], since: number): { monitorId: string; hour: number; checks: number; ok: number }[] {
+  hourlyFor(monitorIds: string[], since: number) {
     if (monitorIds.length === 0) return [];
     return this.sql
-      .exec<{ monitor_id: string; hour: number; checks: number; ok: number }>(
-        `SELECT monitor_id, hour, checks, ok FROM rollup WHERE hour >= ? AND monitor_id IN (${monitorIds.map(() => "?").join(", ")})`,
+      .exec<{ monitor_id: string; hour: number; checks: number; ok: number; ms_sum: number; ms_count: number }>(
+        `SELECT monitor_id, hour, checks, ok, ms_sum, ms_count FROM rollup WHERE hour >= ? AND monitor_id IN (${monitorIds.map(() => "?").join(", ")})`,
         since,
         ...monitorIds,
       )
       .toArray()
-      .map((r) => ({ monitorId: r.monitor_id, hour: r.hour, checks: r.checks, ok: r.ok }));
+      .map((r) => ({ monitorId: r.monitor_id, hour: r.hour, checks: r.checks, ok: r.ok, latencySum: r.ms_sum, latencyCount: r.ms_count }));
   }
 
   hourly(monitorId: string, since: number): HourlyPoint[] {

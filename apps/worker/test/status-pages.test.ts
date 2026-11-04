@@ -171,7 +171,14 @@ describe("status pages", () => {
 
     const opens = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
     expect(opens.historyDays).toBe(30);
+    expect(opens.barSize).toBe("day");
     expect(opens.groups[0].components[0].days).toHaveLength(30);
+    expect(opens.groups[0].components[0].days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
+
+    const week = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    expect(week.barSize).toBe("hour");
+    expect(week.groups[0].components[0].days).toHaveLength(7 * 24);
+    expect(week.groups[0].components[0].days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
 
     const day = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1`)).json()) as any;
     expect(day.barSize).toBe("hour");
@@ -210,7 +217,7 @@ describe("status pages", () => {
     expect(html).toContain("Caído");
     expect(html).toContain("Incidentes anteriores");
     expect(html).toMatch(/Actualizado \d\d:\d\d GMT-6/);
-    expect(html).not.toContain("UTC");
+    expect(html).not.toMatch(/\d\d:\d\d UTC/);
 
     expect(
       (await call("POST", "/api/v1/status-pages", ws.apiKey, { title: "x", slug: slug(), timeZone: "Mars/Olympus_Mons" })).body.field,
@@ -226,7 +233,7 @@ describe("status pages", () => {
       slug: pageSlug,
       language: "es",
       timeZone: "America/Mexico_City",
-      historyDays: 7,
+      historyDays: 45,
       components: [{ monitorId: api.id }],
     });
     // Mexico City has been UTC-6 all year since 2022.
@@ -240,8 +247,8 @@ describe("status pages", () => {
     });
     const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
     const days = json.groups[0].components[0].days;
-    expect(days).toHaveLength(7);
-    expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1 });
+    expect(days).toHaveLength(45);
+    expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1, ms: null });
     expect(days.at(-2)).toMatchObject({ checks: 1, uptime: 0 });
 
     const local = await exports.default.fetch(`${BASE}/s/${pageSlug}`);
@@ -255,6 +262,46 @@ describe("status pages", () => {
     ).text();
     expect(madrid).toMatch(/Actualizado \d\d:\d\d CES?T/);
     expect(madrid).toContain("Cada barra es un día en hora GMT-6.");
+
+    // A visitor who picks UTC gets days cut at UTC midnight, so both hours land on one day.
+    const utcJson = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?tz=utc`)).json()) as any;
+    expect(utcJson.utc).toBe(true);
+    const utcDay = new Date(midnight).toISOString().slice(0, 10);
+    expect(utcJson.groups[0].components[0].days.find((d: any) => d.day === utcDay)).toEqual({
+      day: utcDay,
+      checks: 2,
+      uptime: 0.5,
+      ms: null,
+    });
+    const utc = await (
+      await exports.default.fetch(new Request(`${BASE}/s/${pageSlug}?tz=utc`, { cf: { timezone: "Europe/Madrid" } } as RequestInit))
+    ).text();
+    expect(utc).toMatch(/Actualizado \d\d:\d\d UTC/);
+    expect(utc).not.toContain("Cada barra es un día");
+    expect(utc).toContain(`<a href="/s/${pageSlug}">Hora local</a>`);
+    expect(utc).toContain(`<a href="/s/${pageSlug}?tz=utc" aria-current="true">UTC</a>`);
+    expect(utc).toContain(`href="/s/${pageSlug}?days=30&#38;tz=utc"`);
+    expect(utc).toContain(`href="/s/${pageSlug}?tz=utc&#38;day=${utcDay}#selected"`);
+    expect(here).toContain(`<a href="/s/${pageSlug}" aria-current="true">Hora local</a>`);
+  });
+
+  it("tallies components by state and lets visitors fold a group", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const site = await monitor(ws, "Website");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Acme",
+      slug: pageSlug,
+      components: [{ monitorId: api.id }, { monitorId: site.id }],
+    });
+    failing.add(api.url);
+    await tick(ws.id);
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
+    expect(html).toContain('<li class="up"><b class="num">1</b>Operational</li>');
+    expect(html).toContain('<li class="down"><b class="num">1</b>Down</li>');
+    expect(html).toContain('<li><b class="num">0</b>Slow</li>');
+    expect(html).toMatch(/<details class="group" open>\s*<summary><h2>[^<]+<\/h2><span class="muted small">2 services<\/span><\/summary>/);
   });
 
   it("shows incidents people declare and resolve, without alerting anyone", async () => {
@@ -353,7 +400,7 @@ describe("status pages", () => {
       title: "Days",
       slug: pageSlug,
       timeZone: "America/Mexico_City",
-      historyDays: 7,
+      historyDays: 45,
       incidentDays: 7,
       components: [{ monitorId: api.id }, { monitorId: site.id }],
     });
@@ -393,13 +440,13 @@ describe("status pages", () => {
     const outside = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=1999-01-01`)).json()) as any;
     expect(outside.selected).toBeNull();
 
-    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=30&day=${label}`)).text();
-    expect(html).toContain(`href="/s/${pageSlug}?days=30&#38;day=${label}#selected" aria-label=`);
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=90&day=${label}`)).text();
+    expect(html).toContain(`href="/s/${pageSlug}?days=90&#38;day=${label}#selected" aria-label=`);
     const section = html.slice(html.indexOf('<section class="selected" id="selected"'), html.indexOf('<section class="history">'));
     expect(section).toContain("API: HTTP 500");
     expect(section).not.toContain("Website: HTTP 500");
     expect(section).not.toContain("Hidden internal");
-    expect(section).toContain(`href="/s/${pageSlug}?days=30">Back to all incidents</a>`);
+    expect(section).toContain(`href="/s/${pageSlug}?days=90">Back to all incidents</a>`);
     expect(html.match(/aria-current="date"/g)).toHaveLength(2);
 
     const hours = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=1`)).text();

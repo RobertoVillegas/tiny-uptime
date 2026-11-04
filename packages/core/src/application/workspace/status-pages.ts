@@ -1,14 +1,15 @@
 import { Result } from "better-result";
-import type {
-  OverallStatus,
-  PublicComponent,
-  PublicDay,
-  PublicIncident,
-  PublicMaintenance,
-  PublicStatusPage,
-  PublicView,
-  StatusLanguage,
-  StatusPageInput,
+import {
+  HOURLY_UP_TO_DAYS,
+  type OverallStatus,
+  type PublicComponent,
+  type PublicDay,
+  type PublicIncident,
+  type PublicMaintenance,
+  type PublicStatusPage,
+  type PublicView,
+  type StatusLanguage,
+  type StatusPageInput,
 } from "@tiny-uptime/contracts";
 import type { Incident } from "../../domain/incident";
 import { covers, isActive, isFinished } from "../../domain/maintenance";
@@ -186,9 +187,11 @@ function statusOf(m: Monitor): PublicComponent["status"] {
 function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], view: PublicView): PublicStatusPage {
   const now = d.clock.now();
   const range = view.days ?? page.historyDays;
+  const zone = view.utc ? "UTC" : page.timeZone;
   const ids = shown.map((s) => s.monitor.id);
-  const slots = range === 1 ? hourSlots(now) : daySlots(now, range, page.timeZone);
-  const bars = range === 1 ? hourBars(d, ids, slots, page.historyResetAt) : dayBars(d, ids, slots, page.timeZone, page.historyResetAt);
+  const hourly = range <= HOURLY_UP_TO_DAYS;
+  const slots = hourly ? hourSlots(now, range * 24) : daySlots(now, range, zone);
+  const bars = sumBars(d, ids, slots, page.historyResetAt, page.showLatency);
   const windows = d.maintenance.list();
   const resetAt = page.historyResetAt ?? 0;
 
@@ -259,9 +262,10 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], vie
     theme: page.theme,
     language: page.language,
     timeZone: page.timeZone,
+    utc: view.utc === true,
     historyDays: range,
     defaultHistoryDays: page.historyDays,
-    barSize: range === 1 ? "hour" : "day",
+    barSize: hourly ? "hour" : "day",
     incidentDays: page.incidentDays,
     historyResetAt: page.historyResetAt === null ? null : iso(page.historyResetAt),
     showLatency: page.showLatency,
@@ -286,10 +290,10 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], vie
 /** Where one bar starts and ends; `bar` is the `PublicDay.day` it is drawn as. */
 type Slot = { bar: string; from: number; to: number };
 
-/** The last 24 hours, ending with the current hour. */
-function hourSlots(now: number): Slot[] {
-  const since = Math.floor(now / HOUR) * HOUR - 23 * HOUR;
-  return Array.from({ length: 24 }, (_, i) => ({ bar: iso(since + i * HOUR), from: since + i * HOUR, to: since + (i + 1) * HOUR }));
+/** The last `count` hours, ending with the current hour. */
+function hourSlots(now: number, count: number): Slot[] {
+  const since = Math.floor(now / HOUR) * HOUR - (count - 1) * HOUR;
+  return Array.from({ length: count }, (_, i) => ({ bar: iso(since + i * HOUR), from: since + i * HOUR, to: since + (i + 1) * HOUR }));
 }
 
 /** The last `range` days in `zone`, each from midnight to midnight there, ending today. */
@@ -301,32 +305,32 @@ function daySlots(now: number, range: number, zone: string): Slot[] {
   return starts.slice(0, -1).map((from, i) => ({ bar: localDate(from, zone), from, to: starts[i + 1]! }));
 }
 
-function hourBars(d: WorkspaceDeps, ids: string[], slots: Slot[], resetAt: number | null): (monitorId: string) => PublicDay[] {
-  const points = byMonitor(d.history.hourlyFor(ids, Math.max(slots[0]!.from, resetAt ?? 0)).map((p) => ({ ...p, at: p.hour })));
-  return (monitorId) => slots.map((s) => bar(s.bar, points.get(monitorId)?.get(s.from)));
-}
+type Sum = { checks: number; ok: number; latencySum: number; latencyCount: number };
 
 /**
- * UTC pages without a reset in range read the daily rollup; others sum hours into local days, so a
- * day runs midnight to midnight where the page lives and hours before a reset count for nothing.
+ * Sums the hourly rollup into the slots, whether each is an hour or a local day, so a day runs
+ * midnight to midnight where the page lives. Hours before a reset count for nothing.
  */
-function dayBars(d: WorkspaceDeps, ids: string[], slots: Slot[], zone: string, resetAt: number | null): (monitorId: string) => PublicDay[] {
-  const since = slots[0]!.from;
-  if (zone === "UTC" && (resetAt === null || resetAt <= since)) {
-    const daily = byMonitor(d.history.daily(ids, since).map((p) => ({ ...p, at: p.day })));
-    return (monitorId) => slots.map((s) => bar(s.bar, daily.get(monitorId)?.get(s.from)));
-  }
-  const sums = new Map<string, { checks: number; ok: number }[]>();
-  for (const p of d.history.hourlyFor(ids, Math.max(since, resetAt ?? 0))) {
+function sumBars(
+  d: WorkspaceDeps,
+  ids: string[],
+  slots: Slot[],
+  resetAt: number | null,
+  latency: boolean,
+): (monitorId: string) => PublicDay[] {
+  const sums = new Map<string, Sum[]>();
+  for (const p of d.history.hourlyFor(ids, Math.max(slots[0]!.from, resetAt ?? 0))) {
     let i = slots.length - 1;
     while (i > 0 && p.hour < slots[i]!.from) i--;
     let mine = sums.get(p.monitorId);
     if (!mine) sums.set(p.monitorId, (mine = []));
-    const sum = (mine[i] ??= { checks: 0, ok: 0 });
+    const sum = (mine[i] ??= { checks: 0, ok: 0, latencySum: 0, latencyCount: 0 });
     sum.checks += p.checks;
     sum.ok += p.ok;
+    sum.latencySum += p.latencySum;
+    sum.latencyCount += p.latencyCount;
   }
-  return (monitorId) => slots.map((s, i) => bar(s.bar, sums.get(monitorId)?.[i]));
+  return (monitorId) => slots.map((s, i) => bar(s.bar, sums.get(monitorId)?.[i], latency));
 }
 
 /** The instant the local day containing `ms` began in `zone`. */
@@ -365,18 +369,13 @@ function offset(ms: number, zone: string): number {
   return wall - Math.floor(ms / 1000) * 1000;
 }
 
-function byMonitor<T extends { monitorId: string; at: number }>(points: T[]): Map<string, Map<number, T>> {
-  const out = new Map<string, Map<number, T>>();
-  for (const p of points) {
-    let mine = out.get(p.monitorId);
-    if (!mine) out.set(p.monitorId, (mine = new Map()));
-    mine.set(p.at, p);
-  }
-  return out;
-}
-
-function bar(day: string, point: { checks: number; ok: number } | undefined): PublicDay {
-  return { day, checks: point?.checks ?? 0, uptime: point?.checks ? point.ok / point.checks : null };
+function bar(day: string, sum: Sum | undefined, latency: boolean): PublicDay {
+  return {
+    day,
+    checks: sum?.checks ?? 0,
+    uptime: sum?.checks ? sum.ok / sum.checks : null,
+    ms: latency && sum?.latencyCount ? Math.round(sum.latencySum / sum.latencyCount) : null,
+  };
 }
 
 function iso(ms: number): string {

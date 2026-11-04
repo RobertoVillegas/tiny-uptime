@@ -82,10 +82,20 @@ export type StatusPage = StatusPageInput & {
  * One bar on a public page: a day (`2026-11-03`), or an hour (`2026-11-03T14:00:00.000Z`) when
  * the page shows a single day. Uptime is null when nothing was checked.
  */
-export type PublicDay = { day: string; uptime: number | null; checks: number };
+/**
+ * One bar: a day (YYYY-MM-DD) or an hour (ISO instant). `ms` is the average response time of its
+ * timed checks, null when there were none or the page hides latency.
+ */
+export type PublicDay = { day: string; uptime: number | null; checks: number; ms: number | null };
 
-/** What a visitor asked a public page for: a range, and optionally one bar of it (a `PublicDay.day`). */
-export type PublicView = { days?: HistoryRange; bar?: string };
+/**
+ * Ranges up to this many days draw a bar per hour, so a slow afternoon shows; longer ones a bar per
+ * day. Past a week hourly bars drop under a few pixels and the page past a few hundred kilobytes.
+ */
+export const HOURLY_UP_TO_DAYS = 7;
+
+/** What a visitor picked: a range, one bar of it (a `PublicDay.day`), and `utc` to cut days and show times in UTC. */
+export type PublicView = { days?: HistoryRange; bar?: string; utc?: true };
 
 /**
  * The query string that opens one bar: `day=2026-11-03` for a day, `hour=2026-11-03T14` (UTC)
@@ -141,11 +151,14 @@ export type PublicStatusPage = {
   description: string;
   theme: (typeof STATUS_THEMES)[number];
   language: StatusLanguage;
+  /** The zone the page's days are cut in. */
   timeZone: string;
+  /** True when the visitor asked for UTC: days are cut and times shown in UTC instead. */
+  utc: boolean;
   /** The range these bars cover, and the one the page opens with. */
   historyDays: HistoryRange;
   defaultHistoryDays: HistoryRange;
-  /** "hour" when the range is one day. */
+  /** "hour" for ranges up to `HOURLY_UP_TO_DAYS`. */
   barSize: "day" | "hour";
   incidentDays: HistoryRange;
   historyResetAt: string | null;
