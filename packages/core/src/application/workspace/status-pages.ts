@@ -1,11 +1,13 @@
 import { Result } from "better-result";
 import type {
+  OverallStatus,
   PublicComponent,
   PublicDay,
   PublicIncident,
   PublicMaintenance,
   PublicStatusPage,
   PublicView,
+  StatusLanguage,
   StatusPageInput,
 } from "@tiny-uptime/contracts";
 import type { Incident } from "../../domain/incident";
@@ -113,6 +115,22 @@ export function publicStatusPage(d: WorkspaceDeps, pageId: string, view: PublicV
 export function legacyPublicPage(d: WorkspaceDeps, view: PublicView = {}): PublicStatusPage | null {
   const found = pageWithMonitors(d, null);
   return found && buildPublicPage(d, found.page, found.shown, view);
+}
+
+/** What a status badge says: the overall status of a page (or the legacy page), without reading any history. */
+export function publicBadge(d: WorkspaceDeps, pageId: string | null): { language: StatusLanguage; overall: OverallStatus } | null {
+  const found = pageWithMonitors(d, pageId);
+  if (!found) return null;
+  const now = d.clock.now();
+  const ids = found.shown.map((s) => s.monitor.id);
+  const maintenance = d.maintenance.list().some((w) => isActive(w, now) && ids.some((id) => covers(w, id)));
+  return {
+    language: found.page.language,
+    overall: overallStatus(
+      found.shown.map((s) => statusOf(s.monitor)),
+      maintenance,
+    ),
+  };
 }
 
 type Shown = { monitor: Monitor; group: string };

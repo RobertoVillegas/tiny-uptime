@@ -374,4 +374,47 @@ describe("status pages", () => {
     const reset = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
     expect(reset.selected.incidents).toEqual([]);
   });
+
+  it("serves a status badge for a page and for a custom domain's root", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Badge",
+      slug: pageSlug,
+      customDomain: `${pageSlug}.example.com`,
+      components: [{ monitorId: api.id }],
+    });
+    await tick(ws.id);
+
+    const up = await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg`);
+    expect(up.status).toBe(200);
+    expect(up.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    expect(up.headers.get("cache-control")).toContain("max-age=60");
+    const svg = await up.text();
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    expect(svg).toContain('aria-label="status: operational"');
+    expect(svg).toContain('fill="#4c1"');
+
+    const labelled = await (
+      await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg?label=${encodeURIComponent('<b>"API"</b>')}`)
+    ).text();
+    expect(labelled).toContain("&#60;b&#62;&#34;API&#34;&#60;/b&#62;: operational");
+    expect(labelled).not.toContain("<b>");
+
+    const root = await exports.default.fetch(`https://${pageSlug}.example.com/badge.svg`);
+    expect(root.status).toBe(200);
+    expect(await root.text()).toContain("operational");
+
+    failing.add(api.url);
+    await tick(ws.id);
+    const down = await (await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg`)).text();
+    expect(down).toContain('aria-label="status: down"');
+    expect(down).toContain('fill="#e05d44"');
+
+    const missing = await exports.default.fetch(`${BASE}/s/${slug()}/badge.svg`);
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    expect(await missing.text()).toContain("status: unknown");
+  });
 });

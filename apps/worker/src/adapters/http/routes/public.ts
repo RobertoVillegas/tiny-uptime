@@ -7,6 +7,7 @@ import {
   type PublicStatusPage,
   type PublicView,
 } from "@tiny-uptime/contracts";
+import { renderStatusBadge } from "../../html/status-badge";
 import { renderStatusFeed } from "../../html/status-feed";
 import { renderStatusPage } from "../../html/status-page";
 import { workspaceStub } from "../principal";
@@ -21,13 +22,20 @@ const HEARTBEAT_TOKEN = /^([a-z2-7]{12})_[0-9a-f]{32}$/;
 const addresses = new Map<string, { target: PublicTarget | null; until: number }>();
 const ADDRESS_CACHE_MS = 60_000;
 const PUBLIC_CACHE = "public, max-age=30";
+/** Badges are embedded through image proxies like GitHub's camo, which honour a short max-age. */
+const BADGE_CACHE = "public, max-age=60, s-maxage=60";
 
-/** What anyone can reach: status pages (by slug, or at the root of a custom domain), their JSON and feed, and heartbeats. */
+/**
+ * What anyone can reach: status pages (by slug, or at the root of a custom domain), their JSON,
+ * feed and badge, and heartbeats.
+ */
 export function publicRoutes(router: Router): void {
   router
     .get("/", async (c) => page(c, await resolveRoot(c), "html"))
+    .get("/badge.svg", async (c) => badge(c, await resolveRoot(c)))
     .get("/s/:slug", async (c) => page(c, await resolveSlug(c, c.params.slug!), "html"))
     .get("/s/:slug/rss", async (c) => page(c, await resolveSlug(c, c.params.slug!), "rss"))
+    .get("/s/:slug/badge.svg", async (c) => badge(c, await resolveSlug(c, c.params.slug!)))
     .get("/api/public/:slug", async (c) => page(c, await resolveSlug(c, c.params.slug!), "json"))
     .get("/api/heartbeat/:token", heartbeat)
     .post("/api/heartbeat/:token", heartbeat);
@@ -54,6 +62,24 @@ async function page(c: Ctx, target: PublicTarget | null, format: "html" | "json"
       "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'none'; base-uri 'none'",
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
+    },
+  });
+}
+
+/**
+ * A shields-style badge with the page's overall status. An unknown page still gets an image, a
+ * grey "unknown" with a 404, so a stale embed reads as such instead of a broken picture.
+ */
+async function badge(c: Ctx, target: PublicTarget | null): Promise<Response> {
+  const status = target ? await workspaceStub(c, target.workspaceId).publicBadge(target.pageId) : null;
+  return new Response(renderStatusBadge(status, c.url.searchParams.get("label")), {
+    status: status ? 200 : 404,
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": BADGE_CACHE,
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'",
+      "x-content-type-options": "nosniff",
+      "access-control-allow-origin": "*",
     },
   });
 }

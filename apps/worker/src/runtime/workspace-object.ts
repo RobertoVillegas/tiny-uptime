@@ -78,6 +78,10 @@ export class Workspace extends DurableObject<Env> {
     return pageId ? ws.publicStatusPage(this.d, pageId, view) : ws.legacyPublicPage(this.d, view);
   }
 
+  publicBadge(pageId: string | null) {
+    return ws.publicBadge(this.d, pageId);
+  }
+
   override alarm(): Promise<void> {
     return ws.onAlarm(this.d);
   }
