@@ -1,4 +1,13 @@
-import { IncidentUpdateInput, MaintenanceInput, MONITOR_TYPES, MonitorInput, MonitorPatch, validate } from "@tiny-uptime/contracts";
+import {
+  DeclareIncident,
+  IncidentUpdateInput,
+  MaintenanceInput,
+  MONITOR_TYPES,
+  MonitorInput,
+  MonitorPatch,
+  ResolveIncident,
+  validate,
+} from "@tiny-uptime/contracts";
 import type { Principal } from "@tiny-uptime/core";
 import type { Wire } from "../../runtime/wire";
 import type { workspaceStub } from "../http/principal";
@@ -179,6 +188,44 @@ export const TOOLS: readonly Tool[] = [
     inputSchema: object({ id }, ["id"]),
     annotations: { ...write, idempotentHint: true },
     run: (args, c) => answer(c.workspace.acknowledgeIncident(c.principal, str(args, "id")), () => ({ acknowledged: true })),
+  },
+  {
+    name: "declare_incident",
+    title: "Declare an incident",
+    description:
+      "Opens an incident by hand for status page visitors, for something no monitor sees. `kind` down shows an outage, slow " +
+      "degraded performance; `monitorIds` are the monitors it affects (none means every page). Sends no alerts; resolve it with resolve_incident.",
+    inputSchema: object(
+      {
+        title: { type: "string", maxLength: 200 },
+        message: { type: "string", maxLength: 2000 },
+        kind: { enum: ["down", "slow"] },
+        monitorIds: { type: "array", items: { type: "string" } },
+      },
+      ["title", "message"],
+    ),
+    annotations: write,
+    run: async (args, c) => {
+      const parsed = validate(DeclareIncident, args);
+      if (!parsed.ok) return invalid(parsed.message);
+      return answer(c.workspace.declareIncident(c.principal, parsed.value), (i) => presentIncident({ ...i, monitorName: null }));
+    },
+  },
+  {
+    name: "resolve_incident",
+    title: "Resolve a declared incident",
+    description:
+      "Closes an incident someone declared, with an optional last public note. Incidents a monitor opened resolve when it recovers.",
+    inputSchema: object({ id, message: { type: "string", maxLength: 2000 } }, ["id"]),
+    annotations: { ...write, idempotentHint: true },
+    run: async (args, c) => {
+      const { id: incidentId, ...rest } = args;
+      const parsed = validate(ResolveIncident, rest);
+      if (!parsed.ok) return invalid(parsed.message);
+      return answer(c.workspace.resolveIncident(c.principal, String(incidentId ?? ""), parsed.value), (i) =>
+        presentIncident({ ...i, monitorName: null }),
+      );
+    },
   },
   {
     name: "post_incident_update",

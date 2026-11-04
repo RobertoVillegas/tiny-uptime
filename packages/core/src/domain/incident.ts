@@ -17,6 +17,13 @@ export type Incident = {
   reminders: number;
   lastReminderAt: number | null;
   escalatedAt: number | null;
+  /**
+   * Opened by a person rather than a monitor, to tell status page visitors about something no
+   * monitor sees. It has no `monitorId`, names the monitors it `affects` (none means all), sends
+   * no alerts and is resolved by hand.
+   */
+  declared?: true;
+  affects?: string[];
 };
 
 export type AlertKind = "opened" | "resolved" | "reminder" | "escalated";
@@ -81,7 +88,9 @@ export function alertFor(kind: AlertKind, monitor: Monitor, incident: Incident, 
 
 /** What is due for an open, unacknowledged, notified incident: a reminder, an escalation, or nothing. */
 export function dueFollowUps(incident: Incident, policy: AlertPolicy, now: number): { remind: boolean; escalate: boolean } {
-  if (incident.resolvedAt !== null || incident.acknowledgedAt !== null || !incident.notified) return { remind: false, escalate: false };
+  if (incident.resolvedAt !== null || incident.acknowledgedAt !== null || !incident.notified || incident.declared) {
+    return { remind: false, escalate: false };
+  }
   const minute = 60_000;
   const since = incident.lastReminderAt ?? incident.startedAt;
   return {

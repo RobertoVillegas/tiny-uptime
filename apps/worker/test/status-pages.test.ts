@@ -257,6 +257,47 @@ describe("status pages", () => {
     expect(madrid).toContain("Cada barra es un día en hora GMT-6.");
   });
 
+  it("shows incidents people declare and resolve, without alerting anyone", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const site = await monitor(ws, "Website");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, { title: "Acme", slug: pageSlug, components: [{ monitorId: site.id }] });
+    await tick(ws.id);
+
+    const elsewhere = await call("POST", "/api/v1/incidents", ws.apiKey, {
+      title: "API rate limits",
+      monitorIds: [api.id],
+      message: "Looking.",
+    });
+    expect(elsewhere.status).toBe(201);
+    const declared = await call("POST", "/api/v1/incidents", ws.apiKey, {
+      title: "Payments are slow",
+      kind: "slow",
+      message: "We are looking into slow card payments.",
+    });
+    expect(declared.body).toMatchObject({ declared: true, affects: [], monitorId: "", kind: "slow" });
+    expect((await call("POST", "/api/v1/incidents", ws.apiKey, { title: "x", monitorIds: ["nope"], message: "y" })).body.field).toBe(
+      "monitorIds",
+    );
+
+    const page = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    expect(page.overall).toBe("degraded");
+    expect(page.activeIncidents.map((i: any) => i.title)).toEqual(["Payments are slow"]);
+    expect(page.activeIncidents[0]).toMatchObject({ componentName: "", declared: true });
+    expect(page.activeIncidents[0].updates[0].body).toBe("We are looking into slow card payments.");
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
+    expect(html).toContain("<h3>Payments are slow</h3>");
+
+    const auto = (await call("GET", "/api/v1/incidents", ws.apiKey)).body.find((i: any) => !i.declared);
+    expect(auto).toBeUndefined();
+    expect((await call("POST", `/api/v1/incidents/${declared.body.id}/resolve`, ws.apiKey, { message: "All good." })).status).toBe(200);
+    expect((await call("POST", `/api/v1/incidents/${declared.body.id}/resolve`, ws.apiKey, {})).status).toBe(400);
+    const after = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    expect(after.overall).toBe("operational");
+    expect(after.pastIncidents[0].updates.map((u: any) => u.body)).toEqual(["All good.", "We are looking into slow card payments."]);
+  });
+
   it("resets a page's history without deleting it, and brings it back", async () => {
     const ws = await workspace();
     const api = await monitor(ws, "API");

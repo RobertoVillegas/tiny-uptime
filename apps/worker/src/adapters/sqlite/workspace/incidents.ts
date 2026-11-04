@@ -14,6 +14,8 @@ type Row = {
   reminders: number;
   last_reminder_at: number | null;
   escalated_at: number | null;
+  declared: number;
+  affects: string | null;
 };
 
 export class SqliteIncidents implements IncidentRepository {
@@ -21,8 +23,8 @@ export class SqliteIncidents implements IncidentRepository {
 
   insert(i: Incident): void {
     this.sql.exec(
-      `INSERT INTO incident (id, monitor_id, kind, started_at, resolved_at, cause, acknowledged_at, acknowledged_by, notified, reminders, last_reminder_at, escalated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO incident (id, monitor_id, kind, started_at, resolved_at, cause, acknowledged_at, acknowledged_by, notified, reminders, last_reminder_at, escalated_at, declared, affects)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       i.id,
       i.monitorId,
       i.kind,
@@ -35,6 +37,8 @@ export class SqliteIncidents implements IncidentRepository {
       i.reminders,
       i.lastReminderAt,
       i.escalatedAt,
+      i.declared ? 1 : 0,
+      i.declared ? JSON.stringify(i.affects ?? []) : null,
     );
   }
 
@@ -98,5 +102,6 @@ function toIncident(row: Row): Incident {
     reminders: row.reminders,
     lastReminderAt: row.last_reminder_at,
     escalatedAt: row.escalated_at,
+    ...(row.declared ? { declared: true as const, affects: JSON.parse(row.affects ?? "[]") as string[] } : {}),
   };
 }

@@ -38,11 +38,12 @@ export type IncidentUpdate = {
  * The banner of a status page, from the statuses of what it shows: maintenance wins while it is
  * on and nothing else is down; then outage size; slowness reads as degraded.
  */
-export function overallStatus(statuses: MonitorStatus[], maintenanceActive: boolean): OverallStatus {
+/** `declared` are the kinds of open incidents people declared, which count even while monitors pass. */
+export function overallStatus(statuses: MonitorStatus[], maintenanceActive: boolean, declared: ("down" | "slow")[] = []): OverallStatus {
   const down = statuses.filter((s) => s === "down").length;
   if (down > 0 && down === statuses.length) return "major_outage";
-  if (down > 0) return "partial_outage";
+  if (down > 0 || declared.includes("down")) return "partial_outage";
   if (maintenanceActive) return "maintenance";
-  if (statuses.some((s) => s === "degraded")) return "degraded";
+  if (statuses.some((s) => s === "degraded") || declared.includes("slow")) return "degraded";
   return "operational";
 }

@@ -147,4 +147,9 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE status_page ADD COLUMN incident_days INTEGER NOT NULL DEFAULT 14;
   ALTER TABLE status_page ADD COLUMN history_reset_at INTEGER;
   `,
+  // 6: incidents declared by people, which name the monitors they affect instead of having one.
+  `
+  ALTER TABLE incident ADD COLUMN declared INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE incident ADD COLUMN affects TEXT;
+  `,
 ];

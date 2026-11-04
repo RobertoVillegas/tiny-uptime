@@ -4,11 +4,13 @@ import type {
   AlertPolicy,
   ChannelInput,
   ChannelPatch,
+  DeclareIncident,
   IncidentUpdateInput,
   MaintenanceInput,
   MonitorBulk,
   MonitorInput,
   MonitorPatch,
+  ResolveIncident,
   StatusPageInput,
   HistoryRange,
 } from "@tiny-uptime/contracts";
@@ -168,6 +170,14 @@ export class Workspace extends DurableObject<Env> {
   /** Whether the caller may change status pages, checked before claiming addresses in the directory. */
   canWrite(p: Principal) {
     return this.run(p, "write", () => Result.ok(true));
+  }
+
+  declareIncident(p: Principal, input: DeclareIncident) {
+    return this.run(p, "write", () => ws.declareIncident(this.d, input, p));
+  }
+
+  resolveIncident(p: Principal, id: string, input: ResolveIncident) {
+    return this.run(p, "write", () => ws.resolveIncident(this.d, id, input, p));
   }
 
   acknowledgeIncident(p: Principal, id: string) {

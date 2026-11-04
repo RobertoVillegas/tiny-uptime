@@ -230,7 +230,7 @@ function incident(i: PublicIncident, active: boolean, t: Text, f: Formats): stri
     ? `${t.since} ${f.dateTime(i.startedAt)}`
     : `${f.dateTime(i.startedAt)} · ${t.lasted} ${lasted(i.startedAt, i.resolvedAt!)}`;
   return `<article class="incident ${active ? (i.kind === "slow" ? "warn" : "down") : "past"}">
-  <h3>${esc(i.componentName)}: ${esc(i.kind === "slow" ? t.slow : i.title)}</h3>
+  <h3>${i.componentName ? `${esc(i.componentName)}: ` : ""}${esc(i.kind === "slow" && !i.declared ? t.slow : i.title)}</h3>
   <p class="muted small">${when}</p>
   ${updates ? `<ul class="updates">${updates}</ul>` : ""}
 </article>`;

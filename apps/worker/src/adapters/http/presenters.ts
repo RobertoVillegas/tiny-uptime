@@ -61,6 +61,8 @@ export function presentIncident(i: IncidentListing): IncidentDto {
     cause: i.cause,
     acknowledgedAt: iso(i.acknowledgedAt),
     notified: i.notified,
+    declared: i.declared === true,
+    affects: i.affects ?? [],
   };
 }
 

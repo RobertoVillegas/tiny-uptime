@@ -99,8 +99,11 @@ export type PublicIncidentUpdate = { status: IncidentUpdateStatus; body: string;
 export type PublicIncident = {
   id: string;
   title: string;
+  /** The affected components; empty for a declared incident that affects the whole page. */
   componentName: string;
   kind: "down" | "slow";
+  /** Opened by a person rather than a monitor, so its title is theirs. */
+  declared: boolean;
   startedAt: string;
   resolvedAt: string | null;
   updates: PublicIncidentUpdate[];

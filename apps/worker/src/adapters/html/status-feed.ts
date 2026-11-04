@@ -20,7 +20,7 @@ function item(i: PublicIncident, link: string): string {
   const state = i.resolvedAt ? `Resolved ${new Date(i.resolvedAt).toUTCString()}` : "Ongoing";
   const updates = i.updates.map((u) => `${u.status}: ${u.body}`).join("\n\n");
   return `<item>
-<title>${esc(`${i.componentName}: ${i.kind === "slow" ? "slow responses" : i.title}`)}</title>
+<title>${esc(`${i.componentName ? `${i.componentName}: ` : ""}${i.kind === "slow" && !i.declared ? "slow responses" : i.title}`)}</title>
 <link>${esc(link)}</link>
 <guid isPermaLink="false">${esc(i.id)}</guid>
 <pubDate>${new Date(i.startedAt).toUTCString()}</pubDate>

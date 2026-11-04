@@ -5,6 +5,7 @@ import type {
   ChannelDraft,
   ChannelPatch,
   CreatedApiKey,
+  DeclareIncidentDraft,
   Incident,
   IncidentUpdate,
   IncidentUpdateInput,
@@ -105,6 +106,10 @@ export function createClient(t: Transport) {
         return get<Incident[]>(`/api/v1/incidents${params.size ? `?${params}` : ""}`);
       },
       acknowledge: (id: string) => post<{ ok: true }>(`/api/v1/incidents/${id}/acknowledge`),
+      /** Opens an incident by hand for status page visitors; it sends no alerts. */
+      declare: (input: DeclareIncidentDraft) => post<Incident>("/api/v1/incidents", input),
+      /** Closes a declared incident, optionally with a last public note. */
+      resolve: (id: string, message?: string) => post<Incident>(`/api/v1/incidents/${id}/resolve`, message ? { message } : {}),
       updates: (id: string) => get<IncidentUpdate[]>(`/api/v1/incidents/${id}/updates`),
       postUpdate: (id: string, update: Partial<IncidentUpdateInput> & { body: string }) =>
         post<IncidentUpdate>(`/api/v1/incidents/${id}/updates`, update),

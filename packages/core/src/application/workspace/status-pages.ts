@@ -181,12 +181,13 @@ function buildPublicPage(
   }
 
   const names = new Map(shown.map((s) => [s.monitor.id, s.monitor.name]));
+  /** A declared incident shows on pages with a monitor it affects, or on every page when it names none. */
+  const shows = (i: Incident) => (i.declared ? !i.affects?.length || i.affects.some((id) => names.has(id)) : names.has(i.monitorId));
   const incidents = d.incidents
     .list({ limit: 200 })
     .filter(
       (i) =>
-        names.has(i.monitorId) &&
-        (i.resolvedAt === null || (i.resolvedAt >= now - page.incidentDays * DAY && i.startedAt >= (page.historyResetAt ?? 0))),
+        shows(i) && (i.resolvedAt === null || (i.resolvedAt >= now - page.incidentDays * DAY && i.startedAt >= (page.historyResetAt ?? 0))),
     );
   const updates = d.incidentUpdates.forIncidents(
     incidents.map((i) => i.id),
@@ -195,8 +196,14 @@ function buildPublicPage(
   const toPublic = (i: Incident): PublicIncident => ({
     id: i.id,
     title: i.cause,
-    componentName: names.get(i.monitorId)!,
+    componentName: i.declared
+      ? (i.affects ?? [])
+          .filter((id) => names.has(id))
+          .map((id) => names.get(id)!)
+          .join(", ")
+      : names.get(i.monitorId)!,
     kind: i.kind,
+    declared: i.declared === true,
     startedAt: iso(i.startedAt),
     resolvedAt: i.resolvedAt === null ? null : iso(i.resolvedAt),
     updates: updates
@@ -235,6 +242,7 @@ function buildPublicPage(
     overall: overallStatus(
       statuses,
       maintenance.some((m) => m.active),
+      incidents.filter((i) => i.declared && i.resolvedAt === null).map((i) => i.kind),
     ),
     groups,
     activeIncidents: incidents.filter((i) => i.resolvedAt === null && i.notified).map(toPublic),
