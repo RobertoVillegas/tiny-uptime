@@ -36,12 +36,23 @@ p{margin:0}
 .zone-note{text-align:right;margin:.25rem 0 -.75rem}
 .ranges a[aria-current]{color:var(--fg);background:var(--surface);border-color:var(--line);font-weight:500}
 @media (max-width:40rem){.ranges{flex-wrap:nowrap;justify-content:space-between;gap:0}.ranges a{padding:.25rem .4rem;font-size:.75rem;white-space:nowrap}}
-.bar{position:relative;border-radius:2px;background:var(--none);outline-offset:2px}
+.bar{display:block;position:relative;border-radius:2px;background:var(--none);outline-offset:2px;-webkit-tap-highlight-color:transparent}
 .bar.up{background:var(--up)}.bar.warn{background:var(--warn)}.bar.down{background:var(--down)}
-.bar:hover,.bar:focus-visible{opacity:.75}
+.bar:focus-visible{opacity:.75}
+.bars:has([aria-current]) .bar:not([aria-current]){opacity:.45}
+.bar[aria-current]{outline:2px solid var(--fg);outline-offset:1px;z-index:1}
 .tip{display:none;position:absolute;bottom:calc(100% + .5rem);left:50%;transform:translateX(-50%);z-index:2;width:max-content;max-width:14rem;padding:.5rem .625rem;border-radius:.5rem;background:var(--fg);color:var(--bg);font-size:.75rem;line-height:1.4;pointer-events:none}
 .tip b{display:block}
-.bar:hover .tip,.bar:focus-visible .tip{display:block}
+.bar:focus-visible .tip{display:block}
+@media (hover:hover){.bar:hover{opacity:.75}.bars:has([aria-current]) .bar:hover{opacity:1}.bar:hover .tip{display:block}}
+.selected{background:var(--surface);border:1px solid var(--line);border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem;scroll-margin-top:1rem}
+.selected h2{margin:0;color:var(--fg)}
+.selected .incident{border-left-width:1px}
+.bar-summary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.375rem}
+.bar-summary li{display:flex;align-items:center;gap:.5rem;font-size:.875rem}
+.bar-summary .num{margin-left:auto;text-align:right}
+.dot{flex:none;width:.5rem;height:.5rem;border-radius:50%;background:var(--none)}
+.dot.up{background:var(--up)}.dot.warn{background:var(--warn)}.dot.down{background:var(--down)}
 .bar:nth-child(-n+8) .tip{left:0;transform:none}.bar:nth-last-child(-n+8) .tip{left:auto;right:0;transform:none}
 .incident{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--tone,var(--line));border-radius:.75rem;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.25rem}
 .incident.down{--tone:var(--down)}.incident.warn{--tone:var(--warn)}.incident.info{--tone:var(--info)}

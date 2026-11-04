@@ -9,7 +9,7 @@ import type {
   MonitorInput,
   MonitorPatch,
   StatusPageInput,
-  HistoryRange,
+  PublicView,
 } from "@tiny-uptime/contracts";
 import { toErrorData, workspace as ws, type Action, type AppError, type Principal } from "@tiny-uptime/core";
 import { checker } from "../adapters/checks/checker";
@@ -74,8 +74,8 @@ export class Workspace extends DurableObject<Env> {
   }
 
   /** A status page by id, or the workspace's legacy page of public monitors when id is null. */
-  publicPage(pageId: string | null, days?: HistoryRange) {
-    return pageId ? ws.publicStatusPage(this.d, pageId, days) : ws.legacyPublicPage(this.d, days);
+  publicPage(pageId: string | null, view?: PublicView) {
+    return pageId ? ws.publicStatusPage(this.d, pageId, view) : ws.legacyPublicPage(this.d, view);
   }
 
   override alarm(): Promise<void> {

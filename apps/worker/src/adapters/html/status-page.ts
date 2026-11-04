@@ -1,4 +1,5 @@
 import {
+  barQuery,
   HISTORY_RANGES,
   type HistoryRange,
   type OverallStatus,
@@ -7,6 +8,7 @@ import {
   type PublicIncident,
   type PublicIncidentUpdate,
   type PublicMaintenance,
+  type PublicSelectedBar,
   type PublicStatusPage,
   type StatusLanguage,
 } from "@tiny-uptime/contracts";
@@ -19,7 +21,8 @@ export const REPO_URL = "https://github.com/RobertoVillegas/tiny-uptime";
  * The public status page: server-rendered HTML with no JavaScript, so it loads instantly, costs the
  * Worker a millisecond, and works everywhere. Every value from the page's data is escaped. Text is
  * in the page's language. Days follow the page's zone; times of day follow the visitor's when
- * Cloudflare knows it (`viewerZone`), else the page's. `path` is where the range links point.
+ * Cloudflare knows it (`viewerZone`), else the page's. `path` is where the range and bar links point;
+ * each bar links to the same page with that bar opened, listing the incidents it overlapped.
  */
 export function renderStatusPage(
   page: PublicStatusPage,
@@ -51,7 +54,8 @@ ${banner(page.overall, t)}
 ${page.activeIncidents.map((i) => incident(i, true, t, f)).join("")}
 ${page.maintenance.map((m) => maintenance(m, t, f)).join("")}
 ${ranges(page, opts.path, t, f)}
-${page.groups.map((g) => group(g.name, g.components, page, t, f)).join("")}
+${page.groups.map((g) => group(g.name, g.components, page, opts.path, t, f)).join("")}
+${page.selected ? selected(page.selected, page, opts.path, t, f) : ""}
 <section class="history">
   <h2>${t.pastIncidents}</h2>
   ${page.pastIncidents.length ? page.pastIncidents.map((i) => incident(i, false, t, f)).join("") : `<p class="muted">${t.noIncidents(page.incidentDays)}</p>`}
@@ -85,6 +89,9 @@ type Text = {
   uptimeOver: (name: string, share: string, n: number, size: "day" | "hour") => string;
   noData: string;
   checks: (share: string, n: number) => string;
+  openBar: string;
+  noBarIncidents: (size: "day" | "hour") => string;
+  closeBar: string;
   since: string;
   lasted: string;
   slow: string;
@@ -119,6 +126,9 @@ const TEXT: Record<StatusLanguage, Text> = {
     uptimeOver: (name, share, n, size) => `${name}: ${share} uptime over the last ${n} ${size === "hour" ? "hours" : "days"}`,
     noData: "No data",
     checks: (share, n) => `${share} uptime, ${n} checks`,
+    openBar: "Show incidents",
+    noBarIncidents: (size) => (size === "hour" ? "No incidents in this hour." : "No incidents on this day."),
+    closeBar: "Back to all incidents",
     since: "Since",
     lasted: "lasted",
     slow: "slow responses",
@@ -152,6 +162,9 @@ const TEXT: Record<StatusLanguage, Text> = {
       `${name}: ${share} disponible en ${size === "hour" ? "las últimas" : "los últimos"} ${n} ${size === "hour" ? "horas" : "días"}`,
     noData: "Sin datos",
     checks: (share, n) => `${share} disponible, ${n} revisiones`,
+    openBar: "Ver incidentes",
+    noBarIncidents: (size) => (size === "hour" ? "Sin incidentes en esta hora." : "Sin incidentes este día."),
+    closeBar: "Volver a todos los incidentes",
     since: "Desde el",
     lasted: "duró",
     slow: "respuestas lentas",
@@ -179,10 +192,21 @@ function banner(overall: OverallStatus, t: Text): string {
   return `<div class="banner ${TONE[overall]}" role="status"><span class="dot"></span>${t.banner[overall]}</div>`;
 }
 
-/** Links to every range, the current one marked; the page's default range links to the bare path. */
+/** The page at a range; the page's default range is the bare path. */
+function rangeHref(page: PublicStatusPage, path: string, days: HistoryRange): string {
+  return days === page.defaultHistoryDays ? path : `${path}?days=${days}`;
+}
+
+/** The page at its current range with one bar opened, scrolled to that bar's incidents. */
+function barHref(page: PublicStatusPage, path: string, day: string): string {
+  const base = rangeHref(page, path, page.historyDays);
+  return `${base}${base.includes("?") ? "&" : "?"}${barQuery(day)}#selected`;
+}
+
+/** Links to every range, the current one marked. */
 function ranges(page: PublicStatusPage, path: string, t: Text, f: Formats): string {
   const link = (days: HistoryRange) => {
-    const href = days === page.defaultHistoryDays ? path : `${path}?days=${days}`;
+    const href = rangeHref(page, path, days);
     const current = days === page.historyDays ? ` aria-current="page"` : "";
     return `<a href="${esc(href)}"${current}>${t.rangeLabel(days)}</a>`;
   };
@@ -190,14 +214,14 @@ function ranges(page: PublicStatusPage, path: string, t: Text, f: Formats): stri
   return `<nav class="ranges" aria-label="${t.range}">${HISTORY_RANGES.map(link).join("")}</nav>${note}`;
 }
 
-function group(name: string, components: PublicComponent[], page: PublicStatusPage, t: Text, f: Formats): string {
+function group(name: string, components: PublicComponent[], page: PublicStatusPage, path: string, t: Text, f: Formats): string {
   return `<section class="group">
   <h2>${esc(name)}</h2>
-  <ul class="components">${components.map((c) => component(c, page, t, f)).join("")}</ul>
+  <ul class="components">${components.map((c) => component(c, page, path, t, f)).join("")}</ul>
 </section>`;
 }
 
-function component(c: PublicComponent, page: PublicStatusPage, t: Text, f: Formats): string {
+function component(c: PublicComponent, page: PublicStatusPage, path: string, t: Text, f: Formats): string {
   const n = c.days.length;
   const size = page.barSize;
   const long = n > 45;
@@ -210,16 +234,57 @@ function component(c: PublicComponent, page: PublicStatusPage, t: Text, f: Forma
     <span class="name">${esc(c.name)}</span>
     <span class="state ${c.status}">${t.state[c.status]}</span>
   </div>
-  <div class="bars${long ? " long" : ""}" style="--n:${n}" role="img" aria-label="${esc(t.uptimeOver(c.name, pct(c.uptime), n, size))}">${c.days.map((d) => bar(d, page, t, f)).join("")}</div>
+  <div class="bars${long ? " long" : ""}" style="--n:${n}" role="group" aria-label="${esc(t.uptimeOver(c.name, pct(c.uptime), n, size))}">${c.days.map((d) => bar(d, page, path, t, f)).join("")}</div>
   <div class="row muted small"><span>${ago}</span><span class="num">${pct(c.uptime)} ${t.uptime}</span>${latency}<span>${t.now(size)}</span></div>
 </li>`;
 }
 
-function bar(d: PublicDay, page: PublicStatusPage, t: Text, f: Formats): string {
-  const tone = d.uptime === null ? "none" : d.uptime * 100 >= page.okPct ? "up" : d.uptime * 100 >= page.warnPct ? "warn" : "down";
-  const label = d.uptime === null ? t.noData : t.checks(pct(d.uptime), d.checks);
-  const when = page.barSize === "hour" ? f.hour(d.day) : f.date(d.day);
-  return `<span class="bar ${tone}" tabindex="0"><span class="tip"><b>${when}</b>${label}</span></span>`;
+function tone(d: PublicDay, page: PublicStatusPage): string {
+  return d.uptime === null ? "none" : d.uptime * 100 >= page.okPct ? "up" : d.uptime * 100 >= page.warnPct ? "warn" : "down";
+}
+
+function barLabel(d: PublicDay, t: Text): string {
+  return d.uptime === null ? t.noData : t.checks(pct(d.uptime), d.checks);
+}
+
+function barWhen(day: string, page: PublicStatusPage, f: Formats): string {
+  return page.barSize === "hour" ? f.hour(day) : f.date(day);
+}
+
+/** A link that opens the bar; the tooltip shows pointer users what its accessible name says. */
+function bar(d: PublicDay, page: PublicStatusPage, path: string, t: Text, f: Formats): string {
+  const label = barLabel(d, t);
+  const when = barWhen(d.day, page, f);
+  const current = page.selected?.bar === d.day ? ` aria-current="${page.barSize === "hour" ? "time" : "date"}"` : "";
+  return `<a class="bar ${tone(d, page)}" href="${esc(barHref(page, path, d.day))}" aria-label="${esc(`${when}: ${label}. ${t.openBar}`)}"${current}><span class="tip" aria-hidden="true"><b>${when}</b>${label}</span></a>`;
+}
+
+/**
+ * The opened bar: its span in the visitor's zone, how each component did, and the incidents that
+ * overlapped it. On touch screens, which have no hover, this is also where a bar's numbers show.
+ */
+function selected(s: PublicSelectedBar, page: PublicStatusPage, path: string, t: Text, f: Formats): string {
+  const rows = page.groups
+    .flatMap((g) => g.components)
+    .map((c) => {
+      const d = c.days.find((x) => x.day === s.bar);
+      return d
+        ? `<li><span class="dot ${tone(d, page)}"></span><span class="name">${esc(c.name)}</span><span class="muted num">${barLabel(d, t)}</span></li>`
+        : "";
+    })
+    .join("");
+  const incidents = s.incidents.length
+    ? s.incidents.map((i) => incident(i, i.resolvedAt === null, t, f)).join("")
+    : `<p class="muted">${t.noBarIncidents(page.barSize)}</p>`;
+  return `<section class="selected" id="selected" aria-labelledby="selected-title">
+  <div class="row">
+    <h2 id="selected-title">${barWhen(s.bar, page, f)}</h2>
+    <a class="link small" href="${esc(rangeHref(page, path, page.historyDays))}">${t.closeBar}</a>
+  </div>
+  <p class="muted small">${f.dateTime(s.from)} – ${f.dateTime(s.to)} ${esc(f.zone)}</p>
+  <ul class="bar-summary">${rows}</ul>
+  ${incidents}
+</section>`;
 }
 
 function incident(i: PublicIncident, active: boolean, t: Text, f: Formats): string {

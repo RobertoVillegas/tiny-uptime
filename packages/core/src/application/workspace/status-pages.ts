@@ -1,11 +1,11 @@
 import { Result } from "better-result";
 import type {
-  HistoryRange,
   PublicComponent,
   PublicDay,
   PublicIncident,
   PublicMaintenance,
   PublicStatusPage,
+  PublicView,
   StatusPageInput,
 } from "@tiny-uptime/contracts";
 import type { Incident } from "../../domain/incident";
@@ -99,32 +99,46 @@ export function resetStatusPageHistory(d: WorkspaceDeps, id: string, reset: bool
 
 /**
  * Everything a public page shows, without anything private: no targets, no internal notes.
- * `days` is the range a visitor picked; without it, the page's own default.
+ * `view.days` is the range a visitor picked, else the page's default; `view.bar` one bar of it.
  */
-export function publicStatusPage(d: WorkspaceDeps, pageId: string, days?: HistoryRange): PublicStatusPage | null {
-  const page = d.statusPages.get(pageId);
-  if (!page) return null;
-  const monitors = new Map(d.monitors.list().map((m) => [m.id, m]));
-  const components = d.statusPages.components(pageId).filter((c) => monitors.has(c.monitorId));
-  return buildPublicPage(
-    d,
-    page,
-    components.map((c) => ({ monitor: monitors.get(c.monitorId)!, group: c.group })),
-    days ?? page.historyDays,
-  );
+export function publicStatusPage(d: WorkspaceDeps, pageId: string, view: PublicView = {}): PublicStatusPage | null {
+  const found = pageWithMonitors(d, pageId);
+  return found && buildPublicPage(d, found.page, found.shown, view);
 }
 
 /**
  * The page a workspace slug serves when it has no status page of its own: every monitor marked
  * public, in one group. Kept so links made before status pages existed still work.
  */
-export function legacyPublicPage(d: WorkspaceDeps, days?: HistoryRange): PublicStatusPage | null {
-  const info = d.info.get();
-  if (!info) return null;
-  const page: StatusPage = {
+export function legacyPublicPage(d: WorkspaceDeps, view: PublicView = {}): PublicStatusPage | null {
+  const found = pageWithMonitors(d, null);
+  return found && buildPublicPage(d, found.page, found.shown, view);
+}
+
+type Shown = { monitor: Monitor; group: string };
+
+/** A page and the monitors it shows, in order; a null id is the legacy page of public monitors. */
+function pageWithMonitors(d: WorkspaceDeps, pageId: string | null): { page: StatusPage; shown: Shown[] } | null {
+  if (pageId === null) {
+    const info = d.info.get();
+    if (!info) return null;
+    return { page: legacyPage(info.name), shown: d.monitors.listPublic().map((monitor) => ({ monitor, group: "Services" })) };
+  }
+  const page = d.statusPages.get(pageId);
+  if (!page) return null;
+  const monitors = new Map(d.monitors.list().map((m) => [m.id, m]));
+  const shown = d.statusPages
+    .components(pageId)
+    .filter((c) => monitors.has(c.monitorId))
+    .map((c) => ({ monitor: monitors.get(c.monitorId)!, group: c.group }));
+  return { page, shown };
+}
+
+function legacyPage(title: string): StatusPage {
+  return {
     id: "",
     slug: "",
-    title: info.name,
+    title,
     description: "",
     theme: "auto",
     language: "en",
@@ -140,24 +154,20 @@ export function legacyPublicPage(d: WorkspaceDeps, days?: HistoryRange): PublicS
     customDomain: null,
     createdAt: 0,
   };
-  return buildPublicPage(
-    d,
-    page,
-    d.monitors.listPublic().map((monitor) => ({ monitor, group: "Services" })),
-    days ?? page.historyDays,
-  );
 }
 
-function buildPublicPage(
-  d: WorkspaceDeps,
-  page: StatusPage,
-  shown: { monitor: Monitor; group: string }[],
-  range: HistoryRange,
-): PublicStatusPage {
+function statusOf(m: Monitor): PublicComponent["status"] {
+  return m.paused ? "paused" : m.state.status;
+}
+
+function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], view: PublicView): PublicStatusPage {
   const now = d.clock.now();
+  const range = view.days ?? page.historyDays;
   const ids = shown.map((s) => s.monitor.id);
-  const bars = range === 1 ? hourBars(d, ids, now, page.historyResetAt) : dayBars(d, ids, now, range, page.timeZone, page.historyResetAt);
+  const slots = range === 1 ? hourSlots(now) : daySlots(now, range, page.timeZone);
+  const bars = range === 1 ? hourBars(d, ids, slots, page.historyResetAt) : dayBars(d, ids, slots, page.timeZone, page.historyResetAt);
   const windows = d.maintenance.list();
+  const resetAt = page.historyResetAt ?? 0;
 
   const component = (m: Monitor): PublicComponent => {
     const days = bars(m.id);
@@ -166,7 +176,7 @@ function buildPublicPage(
     return {
       id: m.id,
       name: m.name,
-      status: m.paused ? "paused" : m.state.status,
+      status: statusOf(m),
       uptime: checks ? ok / checks : null,
       latencyMs: page.showLatency ? m.state.lastLatencyMs : null,
       days,
@@ -181,17 +191,14 @@ function buildPublicPage(
   }
 
   const names = new Map(shown.map((s) => [s.monitor.id, s.monitor.name]));
-  const incidents = d.incidents
+  // Open incidents always show; finished ones only when they began after a reset.
+  const visible = d.incidents
     .list({ limit: 200 })
-    .filter(
-      (i) =>
-        names.has(i.monitorId) &&
-        (i.resolvedAt === null || (i.resolvedAt >= now - page.incidentDays * DAY && i.startedAt >= (page.historyResetAt ?? 0))),
-    );
-  const updates = d.incidentUpdates.forIncidents(
-    incidents.map((i) => i.id),
-    true,
-  );
+    .filter((i) => names.has(i.monitorId) && i.notified && (i.resolvedAt === null || i.startedAt >= resetAt));
+  const recent = visible.filter((i) => i.resolvedAt === null || i.resolvedAt >= now - page.incidentDays * DAY);
+  const slot = view.bar === undefined ? undefined : slots.find((s) => s.bar === view.bar);
+  const inSlot = slot ? visible.filter((i) => slot.to > resetAt && i.startedAt < slot.to && (i.resolvedAt ?? now) > slot.from) : [];
+  const updates = d.incidentUpdates.forIncidents([...new Set([...recent, ...inSlot].map((i) => i.id))], true);
   const toPublic = (i: Incident): PublicIncident => ({
     id: i.id,
     title: i.cause,
@@ -215,7 +222,6 @@ function buildPublicPage(
       componentNames: w.monitorIds.length ? w.monitorIds.filter((id) => names.has(id)).map((id) => names.get(id)!) : [...names.values()],
     }));
 
-  const statuses = shown.map((s) => (s.monitor.paused ? "paused" : s.monitor.state.status));
   return {
     title: page.title,
     description: page.description,
@@ -233,60 +239,62 @@ function buildPublicPage(
     okPct: page.okPct,
     warnPct: page.warnPct,
     overall: overallStatus(
-      statuses,
+      shown.map((s) => statusOf(s.monitor)),
       maintenance.some((m) => m.active),
     ),
     groups,
-    activeIncidents: incidents.filter((i) => i.resolvedAt === null && i.notified).map(toPublic),
-    pastIncidents: incidents.filter((i) => i.resolvedAt !== null && i.notified).map(toPublic),
+    activeIncidents: recent.filter((i) => i.resolvedAt === null).map(toPublic),
+    pastIncidents: recent.filter((i) => i.resolvedAt !== null).map(toPublic),
     maintenance,
+    selected: slot ? { bar: slot.bar, from: iso(slot.from), to: iso(slot.to), incidents: inSlot.map(toPublic) } : null,
     updatedAt: iso(now),
   };
 }
 
-/** The last 24 hours, one bar each, ending with the current hour. */
-function hourBars(d: WorkspaceDeps, ids: string[], now: number, resetAt: number | null): (monitorId: string) => PublicDay[] {
+/** Where one bar starts and ends; `bar` is the `PublicDay.day` it is drawn as. */
+type Slot = { bar: string; from: number; to: number };
+
+/** The last 24 hours, ending with the current hour. */
+function hourSlots(now: number): Slot[] {
   const since = Math.floor(now / HOUR) * HOUR - 23 * HOUR;
-  const points = byMonitor(d.history.hourlyFor(ids, Math.max(since, resetAt ?? 0)).map((p) => ({ ...p, at: p.hour })));
-  return (monitorId) =>
-    Array.from({ length: 24 }, (_, i) => {
-      const hour = since + i * HOUR;
-      return bar(iso(hour), points.get(monitorId)?.get(hour));
-    });
+  return Array.from({ length: 24 }, (_, i) => ({ bar: iso(since + i * HOUR), from: since + i * HOUR, to: since + (i + 1) * HOUR }));
+}
+
+/** The last `range` days in `zone`, each from midnight to midnight there, ending today. */
+function daySlots(now: number, range: number, zone: string): Slot[] {
+  const starts = [startOfDay(now, zone)];
+  while (starts.length < range) starts.unshift(startOfDay(starts[0]! - HOUR, zone));
+  // A local day lasts 23 to 25 hours, so 25 hours after today's midnight is always tomorrow.
+  starts.push(startOfDay(starts.at(-1)! + 25 * HOUR, zone));
+  return starts.slice(0, -1).map((from, i) => ({ bar: localDate(from, zone), from, to: starts[i + 1]! }));
+}
+
+function hourBars(d: WorkspaceDeps, ids: string[], slots: Slot[], resetAt: number | null): (monitorId: string) => PublicDay[] {
+  const points = byMonitor(d.history.hourlyFor(ids, Math.max(slots[0]!.from, resetAt ?? 0)).map((p) => ({ ...p, at: p.hour })));
+  return (monitorId) => slots.map((s) => bar(s.bar, points.get(monitorId)?.get(s.from)));
 }
 
 /**
- * The last `range` days in the page's zone, one bar each, ending today. UTC pages without a reset
- * in range read the daily rollup; others sum hours into local days, so a day runs midnight to
- * midnight where the page lives and hours before a reset count for nothing.
+ * UTC pages without a reset in range read the daily rollup; others sum hours into local days, so a
+ * day runs midnight to midnight where the page lives and hours before a reset count for nothing.
  */
-function dayBars(
-  d: WorkspaceDeps,
-  ids: string[],
-  now: number,
-  range: number,
-  zone: string,
-  resetAt: number | null,
-): (monitorId: string) => PublicDay[] {
-  const starts = [startOfDay(now, zone)];
-  while (starts.length < range) starts.unshift(startOfDay(starts[0]! - HOUR, zone));
-  const labels = starts.map((s) => localDate(s, zone));
-  const since = starts[0]!;
+function dayBars(d: WorkspaceDeps, ids: string[], slots: Slot[], zone: string, resetAt: number | null): (monitorId: string) => PublicDay[] {
+  const since = slots[0]!.from;
   if (zone === "UTC" && (resetAt === null || resetAt <= since)) {
     const daily = byMonitor(d.history.daily(ids, since).map((p) => ({ ...p, at: p.day })));
-    return (monitorId) => starts.map((s, i) => bar(labels[i]!, daily.get(monitorId)?.get(s)));
+    return (monitorId) => slots.map((s) => bar(s.bar, daily.get(monitorId)?.get(s.from)));
   }
   const sums = new Map<string, { checks: number; ok: number }[]>();
   for (const p of d.history.hourlyFor(ids, Math.max(since, resetAt ?? 0))) {
-    let i = starts.length - 1;
-    while (i > 0 && p.hour < starts[i]!) i--;
+    let i = slots.length - 1;
+    while (i > 0 && p.hour < slots[i]!.from) i--;
     let mine = sums.get(p.monitorId);
     if (!mine) sums.set(p.monitorId, (mine = []));
     const sum = (mine[i] ??= { checks: 0, ok: 0 });
     sum.checks += p.checks;
     sum.ok += p.ok;
   }
-  return (monitorId) => labels.map((label, i) => bar(label, sums.get(monitorId)?.[i]));
+  return (monitorId) => slots.map((s, i) => bar(s.bar, sums.get(monitorId)?.[i]));
 }
 
 /** The instant the local day containing `ms` began in `zone`. */
