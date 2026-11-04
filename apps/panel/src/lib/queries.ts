@@ -10,6 +10,8 @@ export const monitorsQuery = () =>
   queryOptions({ queryKey: [ws(), "monitors"], queryFn: () => api.monitors.list(), refetchInterval: 30_000 });
 export const monitorQuery = (id: string) =>
   queryOptions({ queryKey: [ws(), "monitors", id], queryFn: () => api.monitors.get(id), refetchInterval: 30_000 });
+export const activityQuery = () =>
+  queryOptions({ queryKey: [ws(), "monitors", "activity"], queryFn: () => api.monitors.activity(), refetchInterval: 60_000 });
 export const statsQuery = (id: string, hours: number) =>
   queryOptions({ queryKey: [ws(), "monitors", id, "stats", hours], queryFn: () => api.monitors.stats(id, hours), refetchInterval: 60_000 });
 export const incidentsQuery = (monitorId?: string) =>

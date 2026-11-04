@@ -18,6 +18,7 @@ import type {
   MonitorDraft,
   MonitorPatch,
   MonitorStats,
+  MonitorsActivity,
   PendingInvite,
   Role,
   SignInStage,
@@ -81,6 +82,8 @@ export function createClient(t: Transport) {
       create: (draft: MonitorDraft) => post<Monitor>("/api/v1/monitors", draft),
       update: (id: string, changes: MonitorPatch) => patch<Monitor>(`/api/v1/monitors/${id}`, changes),
       remove: (id: string) => del(`/api/v1/monitors/${id}`),
+      /** The last 24 hours of every monitor, for charting a list. */
+      activity: () => get<MonitorsActivity>("/api/v1/monitors/activity"),
       stats: (id: string, hours: number) => get<MonitorStats>(`/api/v1/monitors/${id}/stats?hours=${hours}`),
       exportAll: () =>
         get<{ format: string; version: number; exportedAt: string; monitors: Record<string, unknown>[] }>("/api/v1/monitors/export"),

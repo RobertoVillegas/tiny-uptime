@@ -218,6 +218,9 @@ export type Monitor = MonitorInput & {
 /** Hours of history a stats request may ask for: up to 90 days. */
 export const MAX_STATS_HOURS = 24 * 90;
 
+/** The last `hours` hours of every monitor, keyed by monitor id, for the monitors list. */
+export type MonitorsActivity = { hours: number; monitors: Record<string, MonitorStats["series"]> };
+
 export type MonitorStats = {
   hours: number;
   uptime: number | null;

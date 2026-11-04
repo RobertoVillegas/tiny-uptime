@@ -8,6 +8,10 @@ import { workspaceRoute } from "./workspace-route";
 export function monitorRoutes(router: Router): void {
   router
     .get(
+      "/api/v1/monitors/activity",
+      workspaceRoute(async (c) => reply(await c.workspace.monitorsActivity(c.principal))),
+    )
+    .get(
       "/api/v1/monitors",
       workspaceRoute(async (c) =>
         reply(await c.workspace.listMonitors(c.principal, tagFilter(c.url)), (list) => list.map((m) => presentMonitor(m, c.url.origin))),

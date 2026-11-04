@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { Monitor } from "@tiny-uptime/contracts";
+import type { Monitor, MonitorsActivity } from "@tiny-uptime/contracts";
 import { Button } from "@tiny-uptime/ui/components/button";
 import { Dialog } from "@tiny-uptime/ui/components/dialog";
 import { Menu } from "@tiny-uptime/ui/components/menu";
@@ -11,8 +11,9 @@ import { Activity, Download, Ellipsis, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { api, messageOf } from "../../lib/api";
 import { ms, timeAgo } from "../../lib/format";
-import { monitorsQuery } from "../../lib/queries";
+import { activityQuery, monitorsQuery } from "../../lib/queries";
 import { PageHeader } from "../shell/page-header";
+import { ActivityChart } from "./activity-chart";
 import { ImportDialog } from "./import-dialog";
 import { MonitorForm } from "./monitor-form";
 import { useCreateMonitor } from "./mutations";
@@ -20,6 +21,7 @@ import { targetOf, typeLabel } from "./describe";
 
 export function MonitorsPage() {
   const monitors = useQuery(monitorsQuery());
+  const activity = useQuery(activityQuery());
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const create = useCreateMonitor();
@@ -106,7 +108,7 @@ export function MonitorsPage() {
         ) : (
           <ul className="divide-y divide-border">
             {list.map((m) => (
-              <MonitorRow key={m.id} monitor={m} />
+              <MonitorRow key={m.id} monitor={m} activity={activity.data} />
             ))}
           </ul>
         )}
@@ -115,13 +117,13 @@ export function MonitorsPage() {
   );
 }
 
-function MonitorRow({ monitor: m }: { monitor: Monitor }) {
+function MonitorRow({ monitor: m, activity }: { monitor: Monitor; activity: MonitorsActivity | undefined }) {
   return (
     <li>
       <Link
         to="/monitors/$monitorId"
         params={{ monitorId: m.id }}
-        className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-0.5 px-5 py-3.5 transition-colors duration-150 hover:bg-subtle sm:grid-cols-[1fr_7rem_5rem_8rem]"
+        className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-0.5 px-5 py-3.5 transition-colors duration-150 hover:bg-subtle sm:grid-cols-[1fr_7rem_5rem_8rem] md:grid-cols-[1fr_11rem_6.5rem_4.5rem_7rem] md:gap-x-5"
       >
         <StatusDot status={m.status} className="sm:hidden" />
         <span className="flex min-w-0 flex-col">
@@ -132,6 +134,11 @@ function MonitorRow({ monitor: m }: { monitor: Monitor }) {
             {m.tags.length ? ` · ${m.tags.join(", ")}` : ""}
           </span>
         </span>
+        {activity ? (
+          <ActivityChart series={activity.monitors[m.id]} hours={activity.hours} className="hidden md:block" />
+        ) : (
+          <span className="hidden md:block" />
+        )}
         <StatusBadge status={m.status} className="hidden sm:inline-flex" />
         <span className="hidden text-right text-[0.8125rem] text-muted-foreground tabular-nums sm:block">
           {m.type === "heartbeat" ? "" : ms(m.lastLatencyMs)}

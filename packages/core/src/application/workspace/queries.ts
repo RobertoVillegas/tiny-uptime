@@ -1,7 +1,7 @@
 import { Result } from "better-result";
-import { MAX_INCIDENTS_PAGE, MAX_STATS_HOURS, type MonitorStats, type PublicStatus } from "@tiny-uptime/contracts";
+import { MAX_INCIDENTS_PAGE, MAX_STATS_HOURS, type MonitorStats, type MonitorsActivity, type PublicStatus } from "@tiny-uptime/contracts";
 import type { NotFound } from "../../errors";
-import type { IncidentListing } from "../../ports/workspace";
+import type { HourlyPoint, IncidentListing } from "../../ports/workspace";
 import type { WorkspaceDeps } from "./deps";
 import { getMonitor } from "./monitors";
 
@@ -18,16 +18,30 @@ export function monitorStats(d: WorkspaceDeps, id: string, requestedHours: numbe
       hours,
       uptime: checks ? sum((p) => p.ok) / checks : null,
       avgLatencyMs: latencyCount ? Math.round(sum((p) => p.latencySum) / latencyCount) : null,
-      series: points.map((p) => ({
-        hour: new Date(p.hour).toISOString(),
-        checks: p.checks,
-        ok: p.ok,
-        avgLatencyMs: p.latencyCount ? Math.round(p.latencySum / p.latencyCount) : null,
-        minLatencyMs: p.latencyMin,
-        maxLatencyMs: p.latencyMax,
-      })),
+      series: points.map(seriesPoint),
     };
   });
+}
+
+/** The last 24 hours of every monitor in one read, so the monitors list can chart each row. */
+export function monitorsActivity(d: WorkspaceDeps): MonitorsActivity {
+  const hours = 24;
+  const monitors: MonitorsActivity["monitors"] = {};
+  for (const p of d.history.allHourly(hourStart(d.clock.now()) - (hours - 1) * HOUR)) {
+    (monitors[p.monitorId] ??= []).push(seriesPoint(p));
+  }
+  return { hours, monitors };
+}
+
+function seriesPoint(p: HourlyPoint): MonitorStats["series"][number] {
+  return {
+    hour: new Date(p.hour).toISOString(),
+    checks: p.checks,
+    ok: p.ok,
+    avgLatencyMs: p.latencyCount ? Math.round(p.latencySum / p.latencyCount) : null,
+    minLatencyMs: p.latencyMin,
+    maxLatencyMs: p.latencyMax,
+  };
 }
 
 export function listIncidents(d: WorkspaceDeps, query: { limit?: number; monitorId?: string }): IncidentListing[] {

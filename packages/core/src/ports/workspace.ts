@@ -51,6 +51,8 @@ export interface HistoryRepository {
   record(monitorId: string, at: number, sample: { ok: boolean; latencyMs: number | null }): void;
   hourly(monitorId: string, since: number): HourlyPoint[];
   publicHourly(since: number): (HourlyPoint & { monitorId: string })[];
+  /** Every monitor's hourly rows since `since`, oldest first. */
+  allHourly(since: number): (HourlyPoint & { monitorId: string })[];
   /** Checks and passes per day (UTC) since `since`, for the given monitors. */
   daily(monitorIds: string[], since: number): { monitorId: string; day: number; checks: number; ok: number }[];
   /** Checks and passes per hour since `since`, for the given monitors. */

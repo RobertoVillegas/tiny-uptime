@@ -83,6 +83,13 @@ export class SqliteHistory implements HistoryRepository {
       .map((row) => ({ ...toPoint(row), monitorId: row.monitor_id }));
   }
 
+  allHourly(since: number): (HourlyPoint & { monitorId: string })[] {
+    return this.sql
+      .exec<Row>("SELECT * FROM rollup WHERE hour >= ? ORDER BY hour", since)
+      .toArray()
+      .map((row) => ({ ...toPoint(row), monitorId: row.monitor_id }));
+  }
+
   deleteForMonitor(monitorId: string): void {
     this.sql.exec("DELETE FROM rollup WHERE monitor_id = ?", monitorId);
     this.sql.exec("DELETE FROM rollup_daily WHERE monitor_id = ?", monitorId);
