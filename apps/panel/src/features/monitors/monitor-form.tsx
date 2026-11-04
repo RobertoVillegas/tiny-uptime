@@ -267,7 +267,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
     defaultValues: initialValues(monitor),
     onSubmit: async ({ value }) => {
       setFormError(null);
-      const draft = { ...toDraft(value), ...rulesToDraft(rules) } as MonitorDraft;
+      const draft = { ...toDraft(value), ...rulesToDraft(rules, value.type) } as MonitorDraft;
       const checked = validate(MonitorInput, draft);
       if (!checked.ok) {
         setErrors({ [fieldOf(checked.field)]: tidy(checked.message, checked.field) });
@@ -531,13 +531,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
           : text("timeoutSec", "Timeout (seconds)", { inputMode: "decimal" })}
       </div>
 
-      <AlertRulesFields
-        value={rules}
-        onChange={setRules}
-        errors={errors}
-        {...(monitor ? { monitorId: monitor.id } : {})}
-        heartbeat={type === "heartbeat"}
-      />
+      <AlertRulesFields value={rules} onChange={setRules} errors={errors} {...(monitor ? { monitorId: monitor.id } : {})} type={type} />
 
       <form.Field name="public">
         {(field) => (

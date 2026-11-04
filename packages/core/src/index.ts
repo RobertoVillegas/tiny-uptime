@@ -11,6 +11,7 @@ export * from "./domain/maintenance";
 export * from "./domain/status-page";
 export * from "./domain/monitor/health";
 export * from "./domain/monitor/monitor";
+export * from "./domain/monitor/regions";
 export * from "./domain/monitor/schedule";
 export * from "./domain/monitor/settings";
 export type * from "./ports/auth";

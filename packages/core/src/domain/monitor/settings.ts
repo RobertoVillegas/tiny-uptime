@@ -37,5 +37,9 @@ export function applySettings(monitor: Monitor, next: MonitorSettings, now: numb
 }
 
 function checkChanged(monitor: Monitor, next: MonitorSettings): boolean {
-  return monitor.intervalSec !== next.intervalSec || JSON.stringify(monitor.config) !== JSON.stringify(next.config);
+  return (
+    monitor.intervalSec !== next.intervalSec ||
+    JSON.stringify(monitor.config) !== JSON.stringify(next.config) ||
+    monitor.options.regions.join() !== next.options.regions.join()
+  );
 }

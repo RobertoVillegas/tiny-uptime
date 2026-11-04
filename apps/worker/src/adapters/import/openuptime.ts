@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { REGIONS, type Region } from "@tiny-uptime/contracts";
 import type { workspace } from "@tiny-uptime/core";
 
 /** The fields of an OpenUptime monitor this importer reads (its REST API's shape). */
@@ -35,6 +36,19 @@ type OpenUptimeMonitor = {
 };
 
 const MASK = "••••••••";
+
+/** OpenUptime's bundled probe regions, each as the nearest region here. */
+const REGION_OF: Record<string, Region> = {
+  "us-east": "enam",
+  "us-west": "wnam",
+  "eu-central": "weur",
+  "ap-southeast": "apac",
+  "ap-northeast": "apac",
+};
+
+/** The types OpenUptime checks from its regions; it checks the rest from its own location. */
+const PROBED_TYPES = ["http", "tcp", "websocket", "mcp"];
+
 const TAG = /^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,29}$/u;
 const clamp = (n: number | undefined, min: number, max: number, fallback: number) =>
   typeof n === "number" && Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
@@ -67,7 +81,7 @@ export function fromOpenUptime(m: OpenUptimeMonitor): workspace.ImportCandidate 
   const slow = m.slowThresholdMs && m.slowThresholdMs > 0 ? clamp(m.slowThresholdMs, 50, 60_000, 3000) : null;
   const tags = (m.tags ?? []).filter((t) => TAG.test(t)).slice(0, 10);
   if (tags.length !== (m.tags ?? []).length) notes.push("some tags were not valid here and were dropped");
-  if (m.regions?.some((r) => r !== "auto")) notes.push(`checked from one location, not ${m.regions.join(", ")}`);
+  const regions = PROBED_TYPES.includes(m.type) ? regionsOf(m.regions ?? [], notes) : [];
   if ((m.intervalSec ?? 300) < 30) notes.push("checks every 30 seconds, the shortest interval here");
 
   const common = {
@@ -81,6 +95,7 @@ export function fromOpenUptime(m: OpenUptimeMonitor): workspace.ImportCandidate 
     slowAlertAfter: clamp(m.slowAlertAfter, 0, 20, 0),
     tags,
     dependsOn: m.dependsOnMonitorId ?? null,
+    regions,
   };
   const timeoutMs = clamp(m.timeoutMs, 1000, 30_000, 10_000);
   const headers = Object.fromEntries(Object.entries(m.headers ?? {}).filter(([, v]) => v !== MASK));
@@ -159,6 +174,20 @@ export function fromOpenUptime(m: OpenUptimeMonitor): workspace.ImportCandidate 
     default:
       return { notes, raw: { ...common, type: m.type } };
   }
+}
+
+/**
+ * OpenUptime's regions as regions here. `auto`, its own location, is where the workspace runs.
+ * Regions of a self-hosted probe with ids of its own cannot be placed and are left out.
+ */
+function regionsOf(ids: string[], notes: string[]): Region[] {
+  const named = ids.filter((id) => id !== "auto");
+  const known = named.map((id) => REGION_OF[id] ?? (REGIONS as readonly string[]).find((r) => r === id));
+  const unknown = named.filter((_, i) => !known[i]);
+  if (unknown.length) notes.push(`not checked from ${unknown.join(", ")}: no matching region here`);
+  const regions = REGIONS.filter((r) => known.includes(r));
+  if (regions.length < named.length - unknown.length) notes.push(`${named.join(", ")} are checked from ${regions.join(", ")} here`);
+  return regions;
 }
 
 /** `host:port`, a URL with a host and port, or `[ipv6]:port`. */

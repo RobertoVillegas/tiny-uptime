@@ -1,4 +1,4 @@
-import type { MonitorInput, MonitorStatus, MonitorType } from "@tiny-uptime/contracts";
+import type { MonitorInput, MonitorStatus, MonitorType, Region } from "@tiny-uptime/contracts";
 
 export type HttpTarget = Pick<
   Extract<MonitorInput, { type: "http" }>,
@@ -36,6 +36,8 @@ export type MonitorOptions = {
   tags: string[];
   dependsOn: string | null;
   channelIds: string[];
+  /** Where checks run from; empty is wherever the workspace runs. */
+  regions: Region[];
 };
 
 export const DEFAULT_OPTIONS: MonitorOptions = {
@@ -46,6 +48,7 @@ export const DEFAULT_OPTIONS: MonitorOptions = {
   tags: [],
   dependsOn: null,
   channelIds: [],
+  regions: [],
 };
 
 export type MonitorSettings = MonitorSpec & {
@@ -99,9 +102,19 @@ export function toSettings(input: MonitorInput): MonitorSettings {
     tags,
     dependsOn,
     channelIds,
+    regions,
     ...config
   } = input;
-  const options: MonitorOptions = { failureThreshold, recoveryThreshold, slowThresholdMs, slowAlertAfter, tags, dependsOn, channelIds };
+  const options: MonitorOptions = {
+    failureThreshold,
+    recoveryThreshold,
+    slowThresholdMs,
+    slowAlertAfter,
+    tags,
+    dependsOn,
+    channelIds,
+    regions,
+  };
   return { type, name, intervalSec, paused, public: isPublic, options, config } as MonitorSettings;
 }
 

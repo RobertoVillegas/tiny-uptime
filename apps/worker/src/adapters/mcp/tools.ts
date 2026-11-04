@@ -5,6 +5,7 @@ import {
   MONITOR_TYPES,
   MonitorInput,
   MonitorPatch,
+  REGIONS,
   ResolveIncident,
   validate,
 } from "@tiny-uptime/contracts";
@@ -97,7 +98,8 @@ export const TOOLS: readonly Tool[] = [
     description:
       "Creates a monitor. `monitor` takes the same flat fields as the REST API: type, name, intervalSec, and the type's target " +
       "(http: url, method, headers, expectedStatus, keyword, jsonAssertions [{path, op, value}]; tcp/minecraft: host, port; heartbeat: graceSec), plus alert rules " +
-      "(failureThreshold, recoveryThreshold, slowThresholdMs, tags, dependsOn, channelIds). Heartbeat monitors return the URL to ping.",
+      "(failureThreshold, recoveryThreshold, slowThresholdMs, tags, dependsOn, channelIds) and `regions` to check from (" +
+      `${REGIONS.join(", ")}; a run fails when most of them fail). Heartbeat monitors return the URL to ping.`,
     inputSchema: object(
       {
         monitor: {
