@@ -1,4 +1,5 @@
 import type { Result } from "better-result";
+import type { Region } from "@tiny-uptime/contracts";
 import type { ApiKey } from "../domain/api-key";
 import type { Channel, Delivery } from "../domain/channel";
 import type { AlertEvent, AlertPolicy, Incident } from "../domain/incident";
@@ -125,6 +126,11 @@ export interface WorkspaceInfoRepository {
 
 export interface Checker {
   check(spec: MonitorSpec): Promise<CheckOutcome>;
+}
+
+/** Runs a check from another region. Null when that region could not be asked or did not answer in time. */
+export interface RegionalChecker {
+  check(region: Region, spec: MonitorSpec): Promise<CheckOutcome | null>;
 }
 
 export interface Notifier {

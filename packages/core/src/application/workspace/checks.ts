@@ -1,5 +1,6 @@
-import { afterCheck, afterHeartbeat, afterMissedHeartbeat } from "../../domain/monitor/health";
+import { afterCheck, afterHeartbeat, afterMissedHeartbeat, type CheckOutcome } from "../../domain/monitor/health";
 import type { Monitor } from "../../domain/monitor/monitor";
+import { voteOnRegions } from "../../domain/monitor/regions";
 import { applyHealthUpdate } from "./health";
 import type { WorkspaceDeps } from "./deps";
 
@@ -12,7 +13,7 @@ export async function runDueChecks(d: WorkspaceDeps): Promise<void> {
   const checks = due.filter((m) => m.type !== "heartbeat");
   for (let i = 0; i < checks.length; i += CONCURRENCY) {
     const batch = checks.slice(i, i + CONCURRENCY);
-    const outcomes = await Promise.all(batch.map((m) => d.checker.check(m)));
+    const outcomes = await Promise.all(batch.map((m) => check(d, m)));
     for (const [index, before] of batch.entries()) {
       const monitor = stillCurrent(d, before);
       if (monitor) await applyHealthUpdate(d, monitor, afterCheck(monitor, outcomes[index]!, now), now);
@@ -24,6 +25,20 @@ export async function runDueChecks(d: WorkspaceDeps): Promise<void> {
       await applyHealthUpdate(d, monitor, afterMissedHeartbeat(monitor, now), now);
     }
   }
+}
+
+/**
+ * A monitor with regions is checked from each of them at once. When none answers, it is checked
+ * here instead, so an outage of the probes cannot leave a monitor unwatched.
+ */
+async function check(d: WorkspaceDeps, monitor: Monitor): Promise<CheckOutcome> {
+  const { regions } = monitor.options;
+  if (regions.length === 0) return d.checker.check(monitor);
+  const answers = await Promise.all(regions.map(async (region) => ({ region, outcome: await d.regions.check(region, monitor) })));
+  const voted = voteOnRegions(answers);
+  if (voted) return voted;
+  const local = await d.checker.check(monitor);
+  return { ...local, detail: `${local.detail}; checked here, no region answered` };
 }
 
 /**

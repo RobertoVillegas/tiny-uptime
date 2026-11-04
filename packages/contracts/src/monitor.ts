@@ -19,10 +19,24 @@ export const DNS_RECORD_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "NS"] as con
 export const HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] as const;
 /** `degraded` is up but slower than the monitor's slow threshold. */
 export const MONITOR_STATUSES = ["pending", "up", "degraded", "down", "paused"] as const;
+/**
+ * Where a monitor can be checked from: Durable Object location hints. South America, Africa and the
+ * Middle East are left out because Durable Objects hinted there run in a nearby region instead.
+ */
+export const REGIONS = ["wnam", "enam", "weur", "eeur", "apac", "oc"] as const;
+export const REGION_NAMES: Record<Region, string> = {
+  wnam: "Western North America",
+  enam: "Eastern North America",
+  weur: "Western Europe",
+  eeur: "Eastern Europe",
+  apac: "Asia-Pacific",
+  oc: "Oceania",
+};
 export const LIMITS = { minIntervalSec: 30, maxIntervalSec: 86_400, maxHeaders: 20, maxBodyBytes: 16_384 } as const;
 
 export type MonitorType = (typeof MONITOR_TYPES)[number];
 export type MonitorStatus = (typeof MONITOR_STATUSES)[number];
+export type Region = (typeof REGIONS)[number];
 
 const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i;
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,100}$/;
@@ -56,7 +70,18 @@ const common = {
   dependsOn: v.optional(v.nullable(id), null),
   /** Channels this monitor alerts; empty means every enabled channel. */
   channelIds: v.optional(v.pipe(v.array(id), v.maxLength(20)), []),
+  /** Regions to check from, the run failing when most of them fail; empty checks from the workspace's own location. */
+  regions: v.optional(
+    v.pipe(
+      v.array(v.picklist(REGIONS)),
+      v.check((r) => new Set(r).size === r.length, "must not repeat a region"),
+    ),
+    [],
+  ),
 };
+
+/** For types whose result does not depend on where it is checked from. */
+const noRegions = (why: string) => v.optional(v.pipe(v.array(v.picklist(REGIONS)), v.maxLength(0, why)), []);
 
 /** The settings every monitor type shares, beyond its target. */
 export const MONITOR_OPTION_KEYS = [
@@ -67,6 +92,7 @@ export const MONITOR_OPTION_KEYS = [
   "tags",
   "dependsOn",
   "channelIds",
+  "regions",
 ] as const;
 
 const urlOf = (schemes: RegExp, message: string) =>
@@ -121,7 +147,12 @@ const HttpMonitor = v.pipe(
 
 const TcpMonitor = v.object({ type: v.literal("tcp"), ...common, host, port: int(1, 65_535), timeoutMs });
 const MinecraftMonitor = v.object({ type: v.literal("minecraft"), ...common, host, port: v.optional(int(1, 65_535), 25_565), timeoutMs });
-const HeartbeatMonitor = v.object({ type: v.literal("heartbeat"), ...common, graceSec: v.optional(int(0, 86_400), 60) });
+const HeartbeatMonitor = v.object({
+  type: v.literal("heartbeat"),
+  ...common,
+  regions: noRegions("heartbeats report in; they are not checked from anywhere"),
+  graceSec: v.optional(int(0, 86_400), 60),
+});
 
 /** DNS names may hold labels that are not hostnames, such as _dmarc or a leading wildcard. */
 const DNS_NAME = /^(?=.{1,253}$)(\*\.)?([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9])?\.)*[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9])?\.?$/i;
@@ -162,6 +193,7 @@ const DomainMonitor = v.object({
   ...common,
   /** Registration dates change rarely and RDAP servers rate limit, so checks are hourly at most. */
   intervalSec: v.optional(int(3600, LIMITS.maxIntervalSec), 86_400),
+  regions: noRegions("a registration's expiry is the same from everywhere"),
   domain: host,
   /** Down when the registration expires within this many days. */
   warnDays: v.optional(int(1, 365), 30),

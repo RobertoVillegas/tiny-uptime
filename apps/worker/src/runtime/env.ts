@@ -1,11 +1,14 @@
 import type { AuthStore } from "./auth-object";
 import type { Directory } from "./directory-object";
+import type { Probe } from "./probe-object";
 import type { Workspace } from "./workspace-object";
 
 export interface Env {
   WORKSPACE: DurableObjectNamespace<Workspace>;
   DIRECTORY: DurableObjectNamespace<Directory>;
   AUTH: DurableObjectNamespace<AuthStore>;
+  /** One per region, for monitors checked from several places. */
+  PROBE: DurableObjectNamespace<Probe>;
   /** The panel's static files (apps/panel/dist), served under /app. */
   ASSETS?: Fetcher;
   /** Instance operator token: creates workspaces and their first invites. */

@@ -3,6 +3,7 @@ import type {
   ApiKeyRepository,
   ChannelRepository,
   Checker,
+  RegionalChecker,
   DeliveryRepository,
   HistoryRepository,
   IncidentRepository,
@@ -30,6 +31,7 @@ export type WorkspaceDeps = {
   deliveries: DeliveryRepository;
   apiKeys: ApiKeyRepository;
   checker: Checker;
+  regions: RegionalChecker;
   notifier: Notifier;
   scheduler: Scheduler;
 };

@@ -13,6 +13,7 @@ import type {
 } from "@tiny-uptime/contracts";
 import { toErrorData, workspace as ws, type Action, type AppError, type Principal } from "@tiny-uptime/core";
 import { checker } from "../adapters/checks/checker";
+import { DurableRegions } from "../adapters/checks/regions";
 import { createNotifier } from "../adapters/notify/notifier";
 import { SqliteChannels, SqliteDeliveries } from "../adapters/sqlite/workspace/channels";
 import { SqliteHistory } from "../adapters/sqlite/workspace/history";
@@ -50,6 +51,7 @@ export class Workspace extends DurableObject<Env> {
       deliveries: new SqliteDeliveries(sql),
       apiKeys: new SqliteApiKeys(sql),
       checker,
+      regions: new DurableRegions(env.PROBE),
       notifier: createNotifier(env),
       scheduler: new AlarmScheduler(sql, ctx.storage),
     };

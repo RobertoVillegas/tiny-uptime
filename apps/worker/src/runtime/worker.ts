@@ -18,6 +18,7 @@ import type { Env } from "./env";
 
 export { AuthStore } from "./auth-object";
 export { Directory } from "./directory-object";
+export { Probe } from "./probe-object";
 export { Workspace } from "./workspace-object";
 
 const router = new Router();
