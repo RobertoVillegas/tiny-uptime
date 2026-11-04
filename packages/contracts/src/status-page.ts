@@ -84,6 +84,26 @@ export type StatusPage = StatusPageInput & {
  */
 export type PublicDay = { day: string; uptime: number | null; checks: number };
 
+/** What a visitor asked a public page for: a range, and optionally one bar of it (a `PublicDay.day`). */
+export type PublicView = { days?: HistoryRange; bar?: string };
+
+/**
+ * The query string that opens one bar: `day=2026-11-03` for a day, `hour=2026-11-03T14` (UTC)
+ * for an hour, so links stay short and readable.
+ */
+export function barQuery(bar: string): string {
+  return bar.length === 10 ? `day=${bar}` : `hour=${bar.slice(0, 13)}`;
+}
+
+/** The bar `barQuery` wrote, if the query names one in a valid shape. */
+export function barOfQuery(params: URLSearchParams): string | undefined {
+  const day = params.get("day");
+  if (day && /^\d{4}-\d\d-\d\d$/.test(day)) return day;
+  const hour = params.get("hour");
+  if (hour && /^\d{4}-\d\d-\d\dT\d\d$/.test(hour)) return `${hour}:00:00.000Z`;
+  return undefined;
+}
+
 export type PublicComponent = {
   id: string;
   name: string;
@@ -113,6 +133,9 @@ export type PublicMaintenance = { name: string; startsAt: string; endsAt: string
 
 export type OverallStatus = "operational" | "degraded" | "partial_outage" | "major_outage" | "maintenance";
 
+/** One bar a visitor opened, with the incidents that overlapped it. */
+export type PublicSelectedBar = { bar: string; from: string; to: string; incidents: PublicIncident[] };
+
 export type PublicStatusPage = {
   title: string;
   description: string;
@@ -136,6 +159,8 @@ export type PublicStatusPage = {
   activeIncidents: PublicIncident[];
   pastIncidents: PublicIncident[];
   maintenance: PublicMaintenance[];
+  /** The bar picked with `?day=` or `?hour=`, or null when none (or one outside the range) was. */
+  selected: PublicSelectedBar | null;
   updatedAt: string;
 };
 

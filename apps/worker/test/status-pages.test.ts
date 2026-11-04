@@ -342,4 +342,120 @@ describe("status pages", () => {
     expect(back.pastIncidents).toHaveLength(1);
     expect(back.groups[0].components[0].uptime).toBeCloseTo(2 / 3);
   });
+
+  it("opens a day's bar with the incidents that overlapped it, cut at the page's midnight", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const site = await monitor(ws, "Website");
+    const hidden = await monitor(ws, "Hidden internal");
+    const pageSlug = slug();
+    const created = await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Days",
+      slug: pageSlug,
+      timeZone: "America/Mexico_City",
+      historyDays: 7,
+      incidentDays: 7,
+      components: [{ monitorId: api.id }, { monitorId: site.id }],
+    });
+    for (const m of [api, site, hidden]) failing.add(m.url);
+    await tick(ws.id);
+    failing.clear();
+    await tick(ws.id);
+
+    // Mexico City has been UTC-6 all year since 2022. Two days ago there, an hour after midnight,
+    // API and the hidden monitor failed; Website failed half an hour before that midnight, on the
+    // same UTC date but the day before in Mexico City.
+    const SIX = 6 * 3_600_000;
+    const DAY = 86_400_000;
+    const today = Math.floor((Date.now() - SIX) / DAY) * DAY + SIX;
+    const start = today - 2 * DAY;
+    const label = new Date(start - SIX).toISOString().slice(0, 10);
+    const before = new Date(start - DAY - SIX).toISOString().slice(0, 10);
+    await runInDurableObject(env.WORKSPACE.get(env.WORKSPACE.idFromName(ws.id)), (_: Workspace, state) => {
+      const move = "UPDATE incident SET started_at = ?, resolved_at = ? WHERE monitor_id = ?";
+      state.storage.sql.exec(move, start + 3_600_000, start + 3_900_000, api.id);
+      state.storage.sql.exec(move, start + 3_600_000, start + 3_900_000, hidden.id);
+      state.storage.sql.exec(move, start - 1_800_000, start - 600_000, site.id);
+    });
+
+    const plain = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
+    expect(plain).toContain(`href="/s/${pageSlug}?day=${label}#selected"`);
+    expect(plain).not.toContain('id="selected"');
+    expect(plain).not.toContain('aria-current="date"');
+
+    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
+    expect(json.selected.bar).toBe(label);
+    expect(json.selected.from).toBe(new Date(start).toISOString());
+    expect(json.selected.to).toBe(new Date(start + DAY).toISOString());
+    expect(json.selected.incidents.map((i: { componentName: string }) => i.componentName)).toEqual(["API"]);
+    const earlier = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${before}`)).json()) as any;
+    expect(earlier.selected.incidents.map((i: { componentName: string }) => i.componentName)).toEqual(["Website"]);
+    const outside = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=1999-01-01`)).json()) as any;
+    expect(outside.selected).toBeNull();
+
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=30&day=${label}`)).text();
+    expect(html).toContain(`href="/s/${pageSlug}?days=30&#38;day=${label}#selected" aria-label=`);
+    const section = html.slice(html.indexOf('<section class="selected" id="selected"'), html.indexOf('<section class="history">'));
+    expect(section).toContain("API: HTTP 500");
+    expect(section).not.toContain("Website: HTTP 500");
+    expect(section).not.toContain("Hidden internal");
+    expect(section).toContain(`href="/s/${pageSlug}?days=30">Back to all incidents</a>`);
+    expect(html.match(/aria-current="date"/g)).toHaveLength(2);
+
+    const hours = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=1`)).text();
+    const hour = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString().slice(0, 13);
+    expect(hours).toContain(`href="/s/${pageSlug}?days=1&#38;hour=${hour}#selected"`);
+    const now = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1&hour=${hour}`)).json()) as any;
+    expect(now.selected).toMatchObject({ bar: `${hour}:00:00.000Z`, incidents: [] });
+    const hourHtml = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=1&hour=${hour}`)).text();
+    expect(hourHtml).toContain('aria-current="time"');
+    expect(hourHtml).toContain("No incidents in this hour.");
+
+    await call("POST", `/api/v1/status-pages/${created.body.id}/history-reset`, ws.apiKey);
+    const reset = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
+    expect(reset.selected.incidents).toEqual([]);
+  });
+
+  it("serves a status badge for a page and for a custom domain's root", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Badge",
+      slug: pageSlug,
+      customDomain: `${pageSlug}.example.com`,
+      components: [{ monitorId: api.id }],
+    });
+    await tick(ws.id);
+
+    const up = await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg`);
+    expect(up.status).toBe(200);
+    expect(up.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    expect(up.headers.get("cache-control")).toContain("max-age=60");
+    const svg = await up.text();
+    expect(svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    expect(svg).toContain('aria-label="status: operational"');
+    expect(svg).toContain('fill="#4c1"');
+
+    const labelled = await (
+      await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg?label=${encodeURIComponent('<b>"API"</b>')}`)
+    ).text();
+    expect(labelled).toContain("&#60;b&#62;&#34;API&#34;&#60;/b&#62;: operational");
+    expect(labelled).not.toContain("<b>");
+
+    const root = await exports.default.fetch(`https://${pageSlug}.example.com/badge.svg`);
+    expect(root.status).toBe(200);
+    expect(await root.text()).toContain("operational");
+
+    failing.add(api.url);
+    await tick(ws.id);
+    const down = await (await exports.default.fetch(`${BASE}/s/${pageSlug}/badge.svg`)).text();
+    expect(down).toContain('aria-label="status: down"');
+    expect(down).toContain('fill="#e05d44"');
+
+    const missing = await exports.default.fetch(`${BASE}/s/${slug()}/badge.svg`);
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    expect(await missing.text()).toContain("status: unknown");
+  });
 });

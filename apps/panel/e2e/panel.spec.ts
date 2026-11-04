@@ -184,11 +184,27 @@ test("a status page is published from the panel and served publicly", async ({ p
   await expectAccessible(page);
   await page.getByRole("button", { name: "Publish page" }).click();
   await expect(page.getByRole("heading", { name: "Pub status" })).toBeVisible();
+  await expect(page.getByText(`[![Pub status status](${new URL(page.url()).origin}/s/${slug}/badge.svg)]`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy HTML" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Pub status status" })).toBeVisible();
+  await expectAccessible(page);
 
   const html = await (await request.get(`/s/${slug}`)).text();
   expect(html).toContain("Pub status");
   expect(html).toContain("Checkout API");
   expect(html).not.toContain("Secret job");
+
+  await page.goto(`/s/${slug}`);
+  await page
+    .getByRole("group", { name: /Checkout API/ })
+    .getByRole("link")
+    .last()
+    .click();
+  await expect(page.getByRole("heading", { name: /\d{4}/ })).toBeVisible();
+  await expect(page.getByText("No incidents on this day.")).toBeVisible();
+  await expectAccessible(page);
+  await page.getByRole("link", { name: "Back to all incidents" }).click();
+  await expect(page.getByText("No incidents on this day.")).toHaveCount(0);
 });
 
 test("alert channels of other types can be added, and show no secrets", async ({ page, request }) => {

@@ -55,6 +55,7 @@ Measured on Cloudflare with the prototype: 0–1 ms per heartbeat, 1–2 ms per 
 - Email alerts need Cloudflare Email Service: add a `send_email` binding named `EMAIL` and an `EMAIL_FROM` var with a verified sender to `wrangler.jsonc`. Without them, email deliveries fail with that explanation.
 - Accounts: sign-up from an invite with a passkey, passkey sign-in, optional TOTP second factor, one-time recovery codes, and owner, editor and viewer roles per workspace. The panel's session cookie works with the REST API alongside `x-workspace-id`.
 - Public status pages at `/s/<slug>`, JSON at `/api/public/<slug>`, built in the panel from chosen monitors in groups. `/` serves the page (or workspace) named by `PUBLIC_SLUG`, or the page whose custom domain the request came in on. A workspace's slug still serves its basic page of monitors marked `public`.
+- Each bar on a status page links to that day (`?day=2026-11-02`, cut at the page zone's midnight) or hour (`?days=1&hour=2026-11-03T14`, UTC) and lists the incidents that overlapped it; the JSON takes the same parameters and returns it as `selected`. `/s/<slug>/badge.svg` (or `/badge.svg` on the page's custom domain) is a status badge, with `?label=` for its left side; the panel shows Markdown and HTML to embed it.
 
 - Private panel at `/app`: passkey sign-in and sign-up from invites, monitors (create, edit, pause, delete, uptime history), incidents, alert channels of every type with test sends, members and roles, API keys, passkeys, TOTP and recovery codes.
 
