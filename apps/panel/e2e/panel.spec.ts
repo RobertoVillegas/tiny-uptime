@@ -272,10 +272,17 @@ test("the form sends each new monitor type's own fields", async ({ page, request
     await expect(page.getByRole("combobox", { name: "Check" })).toHaveText(/Every day/);
     await page.getByLabel("Domain", { exact: true }).fill("example.com");
     await page.getByLabel("Warn days ahead").fill("21");
+    await page.getByRole("button", { name: /Alert rules/ }).click();
+    await expect(page.getByRole("group", { name: "Check from" })).toHaveCount(0);
   });
   await create(/PostgreSQL/, "Database", async () => {
     await expect(page.getByLabel("Port", { exact: true })).toHaveAttribute("placeholder", "5432");
     await page.getByLabel("Host", { exact: true }).fill("db.example.com");
+    await page.getByRole("button", { name: /Alert rules/ }).click();
+    await page.getByRole("checkbox", { name: "Asia-Pacific" }).click();
+    await page.getByRole("checkbox", { name: "Western Europe" }).click();
+    await expect(page.getByRole("button", { name: /from 2 regions/ })).toBeVisible();
+    await expectAccessible(page);
   });
 
   const monitors = (await (await request.get("/api/v1/monitors", { headers: key })).json()) as Record<string, unknown>[];
@@ -287,7 +294,7 @@ test("the form sends each new monitor type's own fields", async ({ page, request
     expected: { value: "10 mail.example.com", mode: "exact" },
   });
   expect(byName.Registration).toMatchObject({ type: "domain", domain: "example.com", warnDays: 21, intervalSec: 86_400 });
-  expect(byName.Database).toMatchObject({ type: "postgres", host: "db.example.com", port: 5432 });
+  expect(byName.Database).toMatchObject({ type: "postgres", host: "db.example.com", port: 5432, regions: ["weur", "apac"] });
 });
 
 test("an MCP client is connected through the consent page and can be disconnected", async ({ page, request }) => {

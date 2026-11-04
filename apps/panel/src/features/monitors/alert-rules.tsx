@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Monitor, MonitorDraft } from "@tiny-uptime/contracts";
+import { REGION_NAMES, REGIONS, type Monitor, type MonitorDraft, type MonitorType, type Region } from "@tiny-uptime/contracts";
 import { CheckboxList } from "@tiny-uptime/ui/components/checkbox";
 import { Disclosure } from "@tiny-uptime/ui/components/disclosure";
 import { Field } from "@tiny-uptime/ui/components/field";
@@ -18,6 +18,7 @@ export type AlertRules = {
   tags: string;
   dependsOn: string;
   channelIds: string[];
+  regions: Region[];
 };
 
 export const RULE_FIELDS = [
@@ -28,7 +29,13 @@ export const RULE_FIELDS = [
   "tags",
   "dependsOn",
   "channelIds",
+  "regions",
 ] as const;
+
+/** Types whose result can differ by where they are checked from. */
+export function checksFromRegions(type: MonitorType): boolean {
+  return type !== "heartbeat" && type !== "domain";
+}
 
 export function initialRules(monitor?: Monitor): AlertRules {
   return {
@@ -39,10 +46,11 @@ export function initialRules(monitor?: Monitor): AlertRules {
     tags: (monitor?.tags ?? []).join(", "),
     dependsOn: monitor?.dependsOn ?? "",
     channelIds: monitor?.channelIds ?? [],
+    regions: monitor?.regions ?? [],
   };
 }
 
-export function rulesToDraft(rules: AlertRules): Partial<MonitorDraft> {
+export function rulesToDraft(rules: AlertRules, type: MonitorType): Partial<MonitorDraft> {
   return {
     failureThreshold: Number(rules.failureThreshold),
     recoveryThreshold: Number(rules.recoveryThreshold),
@@ -54,6 +62,7 @@ export function rulesToDraft(rules: AlertRules): Partial<MonitorDraft> {
       .filter(Boolean),
     dependsOn: rules.dependsOn || null,
     channelIds: rules.channelIds,
+    regions: checksFromRegions(type) ? REGIONS.filter((r) => rules.regions.includes(r)) : [],
   };
 }
 
@@ -62,11 +71,12 @@ type Props = {
   onChange: (value: AlertRules) => void;
   errors: Partial<Record<keyof AlertRules, string>>;
   monitorId?: string;
-  heartbeat: boolean;
+  type: MonitorType;
 };
 
 /** Alert rules, folded away by default: the defaults suit most monitors. Opens on its own when it has an error. */
-export function AlertRulesFields({ value, onChange, errors, monitorId, heartbeat }: Props) {
+export function AlertRulesFields({ value, onChange, errors, monitorId, type }: Props) {
+  const heartbeat = type === "heartbeat";
   const monitors = useQuery(monitorsQuery());
   const channels = useQuery(channelsQuery());
   const set = <K extends keyof AlertRules>(key: K, next: AlertRules[K]) => onChange({ ...value, [key]: next });
@@ -75,7 +85,7 @@ export function AlertRulesFields({ value, onChange, errors, monitorId, heartbeat
   const others = (monitors.data ?? []).filter((m) => m.id !== monitorId);
 
   return (
-    <Disclosure title="Alert rules" summary={summary(value)} open={open || hasError} onOpenChange={setOpen}>
+    <Disclosure title="Alert rules" summary={summary(value, type)} open={open || hasError} onOpenChange={setOpen}>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Down after" description="Failed checks in a row." error={errors.failureThreshold}>
           <Input inputMode="numeric" value={value.failureThreshold} onChange={(e) => set("failureThreshold", e.target.value)} />
@@ -108,6 +118,19 @@ export function AlertRulesFields({ value, onChange, errors, monitorId, heartbeat
           </Field>
         </div>
       )}
+      {checksFromRegions(type) ? (
+        <FieldGroup
+          legend="Check from"
+          description="Pick none to check from one place. With several, it fails only when most of them fail."
+          error={errors.regions}
+        >
+          <CheckboxList
+            value={value.regions}
+            onValueChange={(regions) => set("regions", regions)}
+            options={REGIONS.map((r) => ({ value: r, label: REGION_NAMES[r] }))}
+          />
+        </FieldGroup>
+      ) : null}
       <Field
         label="Depends on"
         description="While that monitor is down, this one records incidents without alerting."
@@ -138,8 +161,10 @@ export function AlertRulesFields({ value, onChange, errors, monitorId, heartbeat
   );
 }
 
-function summary(rules: AlertRules): string {
+function summary(rules: AlertRules, type: MonitorType): string {
   const parts = [`down after ${rules.failureThreshold}`];
+  if (checksFromRegions(type) && rules.regions.length)
+    parts.push(`from ${rules.regions.length === 1 ? "1 region" : `${rules.regions.length} regions`}`);
   if (rules.slowThresholdMs.trim()) parts.push(`slow above ${rules.slowThresholdMs} ms`);
   if (rules.dependsOn) parts.push("has a dependency");
   return parts.join(" · ");
