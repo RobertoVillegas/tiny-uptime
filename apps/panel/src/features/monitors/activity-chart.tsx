@@ -64,7 +64,7 @@ export function ActivityChart({
           ) : null}
           <div
             aria-hidden
-            className="pointer-events-none absolute top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-control bg-surface-raised p-3 text-[0.8125rem] shadow-raised"
+            className="pointer-events-none absolute top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-control bg-surface-raised p-3 text-[0.8125rem] shadow-raised"
             style={{ left: `${at(hover)}%` }}
           >
             <SlotDetails slot={slot} day={latencies.length ? [Math.min(...latencies), Math.max(...latencies)] : null} />
