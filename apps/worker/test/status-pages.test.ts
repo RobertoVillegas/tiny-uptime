@@ -343,7 +343,9 @@ describe("status pages", () => {
     expect(html).toContain('<li class="up"><b class="num">1</b>Operational</li>');
     expect(html).toContain('<li class="down"><b class="num">1</b>Down</li>');
     expect(html).toContain('<li><b class="num">0</b>Slow</li>');
-    expect(html).toMatch(/<details class="group" open>\s*<summary><h2>[^<]+<\/h2><span class="muted small">2 services<\/span><\/summary>/);
+    expect(html).toMatch(
+      /<details class="group" open>\s*<summary><h2><svg class="chevron"[^>]*>.*?<\/svg>[^<]+<\/h2><span class="muted small">2 services<\/span><\/summary>/,
+    );
   });
 
   it("shows incidents people declare and resolve, without alerting anyone", async () => {

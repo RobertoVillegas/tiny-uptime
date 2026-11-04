@@ -240,6 +240,8 @@ function ranges(page: PublicStatusPage, path: string, t: Text, f: Formats): stri
   return `<div class="pickers"><nav class="ranges zones" aria-label="${t.zonePicker}">${zone(false, t.localTime)}${zone(true, "UTC")}</nav><nav class="ranges" aria-label="${t.range}">${HISTORY_RANGES.map(link).join("")}</nav></div>${note}`;
 }
 
+const CHEVRON = `<svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 type Count = "up" | "degraded" | "down" | "maintenance";
 const COUNTS: Count[] = ["up", "degraded", "down", "maintenance"];
 
@@ -263,7 +265,7 @@ function counts(page: PublicStatusPage, t: Text): string {
 /** A group visitors can fold away; it opens on every visit, so nothing stays hidden by accident. */
 function group(name: string, components: PublicComponent[], page: PublicStatusPage, path: string, t: Text, f: Formats): string {
   return `<details class="group" open>
-  <summary><h2>${esc(name)}</h2><span class="muted small">${t.services(components.length)}</span></summary>
+  <summary><h2>${CHEVRON}${esc(name)}</h2><span class="muted small">${t.services(components.length)}</span></summary>
   <ul class="components">${components.map((c) => component(c, page, path, t, f)).join("")}</ul>
 </details>`;
 }
