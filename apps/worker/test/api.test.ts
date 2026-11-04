@@ -194,6 +194,30 @@ describe("monitors", () => {
     expect((await call("POST", "/api/v1/monitors/nope/check", { key })).status).toBe(404);
   });
 
+  it("pauses, re-routes and deletes several monitors at once", async () => {
+    const ws = await newWorkspace();
+    const key = ws.apiKey;
+    const make = async (name: string) =>
+      (await call("POST", "/api/v1/monitors", { key, body: { type: "http", name, url: `https://${name}.test/` } })).body.id as string;
+    const [a, b] = [await make("a"), await make("b")];
+    const channel = (
+      await call("POST", "/api/v1/channels", { key, body: { type: "webhook", name: "Hook", url: "https://hooks.example/x" } })
+    ).body;
+
+    const paused = await call("POST", "/api/v1/monitors/bulk", { key, body: { ids: [a, b, "nope"], action: "pause" } });
+    expect(paused.body).toEqual({ changed: [a, b], failed: [{ id: "nope", message: "monitor not found" }] });
+    expect((await call("GET", `/api/v1/monitors/${b}`, { key })).body.paused).toBe(true);
+
+    await call("POST", "/api/v1/monitors/bulk", { key, body: { ids: [a], action: "set_channels", channelIds: [channel.id] } });
+    expect((await call("GET", `/api/v1/monitors/${a}`, { key })).body.channelIds).toEqual([channel.id]);
+    expect((await call("POST", "/api/v1/monitors/bulk", { key, body: { ids: [a], action: "set_channels" } })).body.field).toBe(
+      "channelIds",
+    );
+
+    await call("POST", "/api/v1/monitors/bulk", { key, body: { ids: [a, b], action: "delete" } });
+    expect((await call("GET", "/api/v1/monitors", { key })).body).toHaveLength(0);
+  });
+
   it("fails a keyword check when the word is missing", async () => {
     const ws = await newWorkspace();
     const created = await call("POST", "/api/v1/monitors", {

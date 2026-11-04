@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { MonitorInput, validate, type MonitorPatch } from "@tiny-uptime/contracts";
+import { MonitorInput, validate, type MonitorBulk, type MonitorBulkResult, type MonitorPatch } from "@tiny-uptime/contracts";
 import { toInput, toSettings, type Monitor, type MonitorSettings } from "../../domain/monitor/monitor";
 import { firstCheckAt } from "../../domain/monitor/schedule";
 import { applySettings } from "../../domain/monitor/settings";
@@ -84,6 +84,27 @@ export async function updateMonitor(d: WorkspaceDeps, id: string, patch: Monitor
     await d.scheduler.sync();
     return Result.ok(updated);
   });
+}
+
+/**
+ * Applies one change to each monitor on its own, with the same rules as changing one, and says
+ * which it could not change instead of failing them all.
+ */
+export async function bulkMonitors(d: WorkspaceDeps, bulk: MonitorBulk): Promise<MonitorBulkResult> {
+  const out: MonitorBulkResult = { changed: [], failed: [] };
+  for (const id of new Set(bulk.ids)) {
+    const done =
+      bulk.action === "delete"
+        ? await deleteMonitor(d, id)
+        : await updateMonitor(
+            d,
+            id,
+            bulk.action === "set_channels" ? { channelIds: bulk.channelIds ?? [] } : { paused: bulk.action === "pause" },
+          );
+    if (done.isOk()) out.changed.push(id);
+    else out.failed.push({ id, message: done.error.message });
+  }
+  return out;
 }
 
 export async function deleteMonitor(d: WorkspaceDeps, id: string): Promise<Result<void, NotFound>> {

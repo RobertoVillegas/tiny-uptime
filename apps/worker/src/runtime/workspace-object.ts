@@ -6,6 +6,7 @@ import type {
   ChannelPatch,
   IncidentUpdateInput,
   MaintenanceInput,
+  MonitorBulk,
   MonitorInput,
   MonitorPatch,
   StatusPageInput,
@@ -118,6 +119,10 @@ export class Workspace extends DurableObject<Env> {
 
   monitorsActivity(p: Principal) {
     return this.run(p, "read", () => Result.ok(ws.monitorsActivity(this.d)));
+  }
+
+  bulkMonitors(p: Principal, bulk: MonitorBulk) {
+    return this.run(p, "write", async () => Result.ok(await ws.bulkMonitors(this.d, bulk)));
   }
 
   checkNow(p: Principal, id: string) {

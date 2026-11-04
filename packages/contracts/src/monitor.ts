@@ -224,6 +224,23 @@ export type MonitorInput = v.InferOutput<typeof MonitorInput>;
 export type MonitorDraft = v.InferInput<typeof MonitorInput>;
 
 /** Fields to change on an existing monitor; the rest keep their value. The type cannot change. */
+/** One change applied to several monitors at once. */
+export const MonitorBulk = v.pipe(
+  v.object({
+    ids: v.pipe(v.array(v.pipe(v.string(), v.minLength(1), v.maxLength(64))), v.minLength(1), v.maxLength(500)),
+    action: v.picklist(["pause", "resume", "delete", "set_channels"]),
+    /** For `set_channels`: the channels the monitors alert; empty alerts every channel. */
+    channelIds: v.optional(v.pipe(v.array(v.pipe(v.string(), v.maxLength(64))), v.maxLength(50))),
+  }),
+  v.forward(
+    v.check((b) => b.action !== "set_channels" || b.channelIds !== undefined, "is required to set channels"),
+    ["channelIds"],
+  ),
+);
+export type MonitorBulk = v.InferOutput<typeof MonitorBulk>;
+/** What a bulk change did: the monitors it changed, and why it skipped any. */
+export type MonitorBulkResult = { changed: string[]; failed: { id: string; message: string }[] };
+
 export const MonitorPatch = v.looseObject({ type: v.optional(v.picklist(MONITOR_TYPES)) });
 export type MonitorPatch = Record<string, unknown>;
 

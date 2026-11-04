@@ -1,4 +1,4 @@
-import { MonitorInput, MonitorPatch } from "@tiny-uptime/contracts";
+import { MonitorBulk, MonitorInput, MonitorPatch } from "@tiny-uptime/contracts";
 import { presentMonitor } from "../presenters";
 import { readBody } from "../request";
 import { rejected, reply } from "../respond";
@@ -40,6 +40,14 @@ export function monitorRoutes(router: Router): void {
     .delete(
       "/api/v1/monitors/:id",
       workspaceRoute(async (c) => reply(await c.workspace.deleteMonitor(c.principal, c.params.id!), undefined, 204)),
+    )
+    .post(
+      "/api/v1/monitors/bulk",
+      workspaceRoute(async (c) => {
+        const bulk = await readBody(c.request, MonitorBulk);
+        if (bulk.isErr()) return rejected(bulk.error);
+        return reply(await c.workspace.bulkMonitors(c.principal, bulk.value));
+      }),
     )
     .post(
       "/api/v1/monitors/:id/check",

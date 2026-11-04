@@ -19,6 +19,8 @@ import type {
   MonitorPatch,
   MonitorStats,
   CheckResult,
+  MonitorBulk,
+  MonitorBulkResult,
   MonitorsActivity,
   PendingInvite,
   Role,
@@ -83,6 +85,8 @@ export function createClient(t: Transport) {
       create: (draft: MonitorDraft) => post<Monitor>("/api/v1/monitors", draft),
       update: (id: string, changes: MonitorPatch) => patch<Monitor>(`/api/v1/monitors/${id}`, changes),
       remove: (id: string) => del(`/api/v1/monitors/${id}`),
+      /** Pauses, resumes, deletes or sets the channels of several monitors; reports the ones it could not change. */
+      bulk: (body: MonitorBulk) => post<MonitorBulkResult>("/api/v1/monitors/bulk", body),
       /** Runs one check now; it counts like a scheduled one. */
       check: (id: string) => post<CheckResult>(`/api/v1/monitors/${id}/check`),
       /** The last 24 hours of every monitor, for charting a list. */

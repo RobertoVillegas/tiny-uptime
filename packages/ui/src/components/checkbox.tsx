@@ -1,6 +1,6 @@
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { cn } from "cn";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
 /** A checkbox with its label; the whole row toggles it. */
@@ -56,5 +56,25 @@ export function CheckboxList<T extends string>({
         />
       ))}
     </div>
+  );
+}
+
+/** A checkbox without a visible label, such as a row's select box; `aria-label` names it. */
+export function Tick({ className, ...props }: CheckboxPrimitive.Root.Props & { "aria-label": string }) {
+  return (
+    <CheckboxPrimitive.Root
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-border-strong bg-surface transition-colors duration-150",
+        "data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground",
+        "data-[indeterminate]:border-primary data-[indeterminate]:bg-primary data-[indeterminate]:text-primary-foreground",
+        "outline-offset-2 max-sm:size-5",
+        className,
+      )}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator keepMounted={false}>
+        {props.indeterminate ? <Minus className="size-3" strokeWidth={3} /> : <Check className="size-3" strokeWidth={3} />}
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
   );
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { MonitorDraft, MonitorPatch } from "@tiny-uptime/contracts";
+import type { MonitorBulk, MonitorDraft, MonitorPatch } from "@tiny-uptime/contracts";
 import { notify } from "@tiny-uptime/ui/components/toast";
 import { api, currentWorkspaceId } from "../../lib/api";
 
@@ -30,6 +30,23 @@ export function usePauseMonitor(id: string) {
     onSuccess: async (monitor) => {
       await refresh();
       notify(monitor.paused ? `${monitor.name} is paused` : `${monitor.name} is checking again`, { type: "success" });
+    },
+  });
+}
+
+/** One change to several monitors; says how many changed and why any were skipped. */
+export function useBulkMonitors() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: (bulk: MonitorBulk) => api.monitors.bulk(bulk),
+    onSuccess: async (result, bulk) => {
+      await refresh();
+      const verb = { pause: "Paused", resume: "Resumed", delete: "Deleted", set_channels: "Updated alerts for" }[bulk.action];
+      const n = result.changed.length;
+      notify(`${verb} ${n} ${n === 1 ? "monitor" : "monitors"}`, {
+        type: result.failed.length ? "error" : "success",
+        ...(result.failed.length ? { description: `${result.failed.length} could not be changed: ${result.failed[0]!.message}` } : {}),
+      });
     },
   });
 }
