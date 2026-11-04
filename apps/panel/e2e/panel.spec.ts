@@ -57,7 +57,7 @@ test("an invited owner signs up with a passkey, adds a heartbeat and signs back 
   await page.getByRole("option", { name: /Heartbeat/ }).click();
   await page.getByLabel("Name", { exact: true }).fill("Nightly backup");
   await page.getByRole("button", { name: "Create monitor" }).click();
-  await expect(page.getByRole("heading", { name: "Nightly backup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nightly backup", exact: true })).toBeVisible();
   await expect(page.getByText("Pending")).toBeVisible();
   await expectAccessible(page);
 
