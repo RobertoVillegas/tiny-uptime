@@ -63,7 +63,15 @@ const OPENUPTIME = [
     slowAlertAfter: 0,
     dependsOnMonitorId: "7c1f0000-0000-4000-8000-000000000001",
   },
-  { id: "7c1f0000-0000-4000-8000-000000000003", name: "Game", type: "tcp", target: "game.example:25565", paused: true, tags: [] },
+  {
+    id: "7c1f0000-0000-4000-8000-000000000003",
+    name: "Game",
+    type: "tcp",
+    target: "game.example:25565",
+    paused: true,
+    tags: [],
+    regions: ["us-east", "eu-central", "my-probe"],
+  },
   { id: "7c1f0000-0000-4000-8000-000000000004", name: "Broken", type: "http", target: "not a url" },
 ];
 
@@ -141,7 +149,9 @@ describe("export and import", () => {
       paused: false,
     });
     expect(byName.Worker).toMatchObject({ paused: true, graceSec: 60, intervalSec: 120, failureThreshold: 1, dependsOn: byName.Site.id });
-    expect(byName.Game).toMatchObject({ type: "tcp", host: "game.example", port: 25565, paused: true });
+    expect(byName.Game).toMatchObject({ type: "tcp", host: "game.example", port: 25565, paused: true, regions: ["enam", "weur"] });
+    expect(byName.Site.regions).toEqual([]);
+    expect(done.body.rows[2].notes).toContain("not checked from my-probe: no matching region here");
   });
 
   it("refuses private OpenUptime hosts and reports a refused key", async () => {
