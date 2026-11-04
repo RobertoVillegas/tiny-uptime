@@ -84,9 +84,10 @@ export type StatusPage = StatusPageInput & {
  */
 /**
  * One bar: a day (YYYY-MM-DD) or an hour (ISO instant). `ms` is the average response time of its
- * timed checks, null when there were none or the page hides latency.
+ * timed checks, null when there were none or the page hides latency. `slow` is true when that
+ * average passed the monitor's slow threshold, so a slow hour that stayed up still stands out.
  */
-export type PublicDay = { day: string; uptime: number | null; checks: number; ms: number | null };
+export type PublicDay = { day: string; uptime: number | null; checks: number; ms: number | null; slow: boolean };
 
 /**
  * Ranges up to this many days draw a bar per hour, so a slow afternoon shows; longer ones a bar per
@@ -144,7 +145,14 @@ export type PublicMaintenance = { name: string; startsAt: string; endsAt: string
 export type OverallStatus = "operational" | "degraded" | "partial_outage" | "major_outage" | "maintenance";
 
 /** One bar a visitor opened, with the incidents that overlapped it. */
-export type PublicSelectedBar = { bar: string; from: string; to: string; incidents: PublicIncident[] };
+/** An opened bar: its span, the incidents that overlapped it and, for a day, each component's hours by id. */
+export type PublicSelectedBar = {
+  bar: string;
+  from: string;
+  to: string;
+  incidents: PublicIncident[];
+  hours: Record<string, PublicDay[]> | null;
+};
 
 export type PublicStatusPage = {
   title: string;

@@ -248,7 +248,7 @@ describe("status pages", () => {
     const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
     const days = json.groups[0].components[0].days;
     expect(days).toHaveLength(45);
-    expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1, ms: null });
+    expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1, ms: null, slow: false });
     expect(days.at(-2)).toMatchObject({ checks: 1, uptime: 0 });
 
     const local = await exports.default.fetch(`${BASE}/s/${pageSlug}`);
@@ -272,6 +272,7 @@ describe("status pages", () => {
       checks: 2,
       uptime: 0.5,
       ms: null,
+      slow: false,
     });
     const utc = await (
       await exports.default.fetch(new Request(`${BASE}/s/${pageSlug}?tz=utc`, { cf: { timezone: "Europe/Madrid" } } as RequestInit))
@@ -283,6 +284,47 @@ describe("status pages", () => {
     expect(utc).toContain(`href="/s/${pageSlug}?days=30&#38;tz=utc"`);
     expect(utc).toContain(`href="/s/${pageSlug}?tz=utc&#38;day=${utcDay}#selected"`);
     expect(here).toContain(`<a href="/s/${pageSlug}" aria-current="true">Hora local</a>`);
+  });
+
+  it("marks slow bars by the monitor's threshold and opens a day hour by hour", async () => {
+    const ws = await workspace();
+    const api = await monitor(ws, "API");
+    await call("PATCH", `/api/v1/monitors/${api.id}`, ws.apiKey, { slowThresholdMs: 400 });
+    const pageSlug = slug();
+    await call("POST", "/api/v1/status-pages", ws.apiKey, {
+      title: "Slow",
+      slug: pageSlug,
+      historyDays: 30,
+      components: [{ monitorId: api.id }],
+    });
+    const HOUR = 3_600_000;
+    const day = Math.floor(Date.now() / 86_400_000) * 86_400_000 - 2 * 86_400_000;
+    await runInDurableObject(env.WORKSPACE.get(env.WORKSPACE.idFromName(ws.id)), (_: Workspace, state) => {
+      const insert = "INSERT INTO rollup (monitor_id, hour, checks, ok, ms_sum, ms_count, ms_min, ms_max) VALUES (?, ?, 1, 1, ?, 1, ?, ?)";
+      state.storage.sql.exec(insert, api.id, day + 14 * HOUR, 900, 900, 900);
+      state.storage.sql.exec(insert, api.id, day + 15 * HOUR, 100, 100, 100);
+      // The next day, which must not leak into the opened day's last hour.
+      state.storage.sql.exec(insert, api.id, day + 30 * HOUR, 100, 100, 100);
+    });
+    const label = new Date(day).toISOString().slice(0, 10);
+    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
+    expect(json.groups[0].components[0].days.find((d: any) => d.day === label)).toEqual({
+      day: label,
+      checks: 2,
+      uptime: 1,
+      ms: 500,
+      slow: true,
+    });
+    const hours = json.selected.hours[api.id];
+    expect(hours).toHaveLength(24);
+    expect(hours[14]).toMatchObject({ ms: 900, slow: true });
+    expect(hours[15]).toMatchObject({ ms: 100, slow: false });
+    expect(hours[23].checks).toBe(0);
+
+    const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?day=${label}`)).text();
+    expect(html).toContain('aria-label="API, hour by hour"');
+    expect(html).toContain('class="bar warn" role="img" tabindex="0" aria-label="14:00: 100.00% uptime, 1 checks. 900 ms average (slow)"');
+    expect(html).toMatch(new RegExp(`<a class="bar warn" href="/s/${pageSlug}\\?day=${label}#selected"`));
   });
 
   it("tallies components by state and lets visitors fold a group", async () => {

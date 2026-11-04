@@ -96,7 +96,11 @@ p{margin:0}
 .selected h2{margin:0;color:var(--fg)}
 .selected .incident{border-left-width:1px}
 .bar-summary{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.375rem}
-.bar-summary li{display:flex;align-items:center;gap:.5rem;font-size:.875rem}
+.bar-summary{gap:.875rem}
+.bar-summary li{font-size:.875rem}
+.bar-summary .row{justify-content:flex-start;align-items:center;gap:.5rem}
+.bars.hours{height:1.5rem;margin-top:.375rem}
+.bars.hours .bar:nth-child(-n+4) .tip{left:0;right:auto;transform:none}.bars.hours .bar:nth-last-child(-n+4) .tip{left:auto;right:0;transform:none}
 .bar-summary .num{margin-left:auto;text-align:right}
 .dot{flex:none;width:.5rem;height:.5rem;border-radius:50%;background:var(--none)}
 .dot.up{background:var(--up)}.dot.warn{background:var(--warn)}.dot.down{background:var(--down)}

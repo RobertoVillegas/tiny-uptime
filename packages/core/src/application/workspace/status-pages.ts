@@ -191,7 +191,8 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], vie
   const ids = shown.map((s) => s.monitor.id);
   const hourly = range <= HOURLY_UP_TO_DAYS;
   const slots = hourly ? hourSlots(now, range * 24) : daySlots(now, range, zone);
-  const bars = sumBars(d, ids, slots, page.historyResetAt, page.showLatency);
+  const slowAt = new Map(shown.map((s) => [s.monitor.id, s.monitor.options.slowThresholdMs]));
+  const bars = sumBars(d, ids, slots, page.historyResetAt, page.showLatency, slowAt);
   const windows = d.maintenance.list();
   const resetAt = page.historyResetAt ?? 0;
 
@@ -282,7 +283,15 @@ function buildPublicPage(d: WorkspaceDeps, page: StatusPage, shown: Shown[], vie
     activeIncidents: recent.filter((i) => i.resolvedAt === null).map(toPublic),
     pastIncidents: recent.filter((i) => i.resolvedAt !== null).map(toPublic),
     maintenance,
-    selected: slot ? { bar: slot.bar, from: iso(slot.from), to: iso(slot.to), incidents: inSlot.map(toPublic) } : null,
+    selected: slot
+      ? {
+          bar: slot.bar,
+          from: iso(slot.from),
+          to: iso(slot.to),
+          incidents: inSlot.map(toPublic),
+          hours: hourly ? null : hoursOf(d, ids, slot, page, slowAt),
+        }
+      : null,
     updatedAt: iso(now),
   };
 }
@@ -317,9 +326,12 @@ function sumBars(
   slots: Slot[],
   resetAt: number | null,
   latency: boolean,
+  slowAt: Map<string, number | null>,
 ): (monitorId: string) => PublicDay[] {
   const sums = new Map<string, Sum[]>();
+  const end = slots.at(-1)!.to;
   for (const p of d.history.hourlyFor(ids, Math.max(slots[0]!.from, resetAt ?? 0))) {
+    if (p.hour >= end) continue;
     let i = slots.length - 1;
     while (i > 0 && p.hour < slots[i]!.from) i--;
     let mine = sums.get(p.monitorId);
@@ -330,7 +342,21 @@ function sumBars(
     sum.latencySum += p.latencySum;
     sum.latencyCount += p.latencyCount;
   }
-  return (monitorId) => slots.map((s, i) => bar(s.bar, sums.get(monitorId)?.[i], latency));
+  return (monitorId) => slots.map((s, i) => bar(s.bar, sums.get(monitorId)?.[i], latency, slowAt.get(monitorId) ?? null));
+}
+
+/** An opened day's hours for every component, so a visitor sees which hours were slow or down. */
+function hoursOf(
+  d: WorkspaceDeps,
+  ids: string[],
+  day: Slot,
+  page: StatusPage,
+  slowAt: Map<string, number | null>,
+): Record<string, PublicDay[]> {
+  const slots: Slot[] = [];
+  for (let at = day.from; at < day.to; at += HOUR) slots.push({ bar: iso(at), from: at, to: at + HOUR });
+  const bars = sumBars(d, ids, slots, page.historyResetAt, page.showLatency, slowAt);
+  return Object.fromEntries(ids.map((id) => [id, bars(id)]));
 }
 
 /** The instant the local day containing `ms` began in `zone`. */
@@ -369,12 +395,14 @@ function offset(ms: number, zone: string): number {
   return wall - Math.floor(ms / 1000) * 1000;
 }
 
-function bar(day: string, sum: Sum | undefined, latency: boolean): PublicDay {
+function bar(day: string, sum: Sum | undefined, latency: boolean, slowAt: number | null): PublicDay {
+  const ms = sum?.latencyCount ? Math.round(sum.latencySum / sum.latencyCount) : null;
   return {
     day,
     checks: sum?.checks ?? 0,
     uptime: sum?.checks ? sum.ok / sum.checks : null,
-    ms: latency && sum?.latencyCount ? Math.round(sum.latencySum / sum.latencyCount) : null,
+    ms: latency ? ms : null,
+    slow: slowAt !== null && ms !== null && ms > slowAt,
   };
 }
 

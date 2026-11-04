@@ -96,6 +96,8 @@ type Text = {
   noData: string;
   checks: (share: string, n: number) => string;
   avgMs: (ms: number) => string;
+  slowShort: string;
+  hoursOf: (name: string) => string;
   openBar: string;
   noBarIncidents: (size: "day" | "hour") => string;
   closeBar: string;
@@ -138,6 +140,8 @@ const TEXT: Record<StatusLanguage, Text> = {
     noData: "No data",
     checks: (share, n) => `${share} uptime, ${n} checks`,
     avgMs: (ms) => `${ms} ms average`,
+    slowShort: "slow",
+    hoursOf: (name) => `${name}, hour by hour`,
     openBar: "Show incidents",
     noBarIncidents: (size) => (size === "hour" ? "No incidents in this hour." : "No incidents on this day."),
     closeBar: "Back to all incidents",
@@ -179,6 +183,8 @@ const TEXT: Record<StatusLanguage, Text> = {
     noData: "Sin datos",
     checks: (share, n) => `${share} disponible, ${n} revisiones`,
     avgMs: (ms) => `${ms} ms en promedio`,
+    slowShort: "lento",
+    hoursOf: (name) => `${name}, hora por hora`,
     openBar: "Ver incidentes",
     noBarIncidents: (size) => (size === "hour" ? "Sin incidentes en esta hora." : "Sin incidentes este día."),
     closeBar: "Volver a todos los incidentes",
@@ -286,13 +292,33 @@ function component(c: PublicComponent, page: PublicStatusPage, path: string, t: 
 </li>`;
 }
 
+/** Down or degraded by uptime first; a bar that stayed up but answered slowly is degraded too. */
 function tone(d: PublicDay, page: PublicStatusPage): string {
-  return d.uptime === null ? "none" : d.uptime * 100 >= page.okPct ? "up" : d.uptime * 100 >= page.warnPct ? "warn" : "down";
+  if (d.uptime === null) return "none";
+  if (d.uptime * 100 < page.warnPct) return "down";
+  return d.uptime * 100 < page.okPct || d.slow ? "warn" : "up";
 }
 
 function barLabel(d: PublicDay, t: Text): string {
   if (d.uptime === null) return t.noData;
-  return d.ms === null ? t.checks(pct(d.uptime), d.checks) : `${t.checks(pct(d.uptime), d.checks)}. ${t.avgMs(d.ms)}`;
+  return [t.checks(pct(d.uptime), d.checks), ...barNotes(d, t)].join(". ");
+}
+
+/** The average response time, or that it was slow when the page hides latency. */
+function barNotes(d: PublicDay, t: Text): string[] {
+  if (d.ms !== null) return [d.slow ? `${t.avgMs(d.ms)} (${t.slowShort})` : t.avgMs(d.ms)];
+  return d.slow ? [t.slowShort] : [];
+}
+
+function barTip(d: PublicDay, when: string, t: Text): string {
+  const body =
+    d.uptime === null
+      ? t.noData
+      : t.checks(pct(d.uptime), d.checks) +
+        barNotes(d, t)
+          .map((n) => `<span>${n}</span>`)
+          .join("");
+  return `<span class="tip" aria-hidden="true"><b>${when}</b>${body}</span>`;
 }
 
 function barWhen(day: string, page: PublicStatusPage, f: Formats): string {
@@ -304,8 +330,7 @@ function bar(d: PublicDay, page: PublicStatusPage, path: string, t: Text, f: For
   const label = barLabel(d, t);
   const when = barWhen(d.day, page, f);
   const current = page.selected?.bar === d.day ? ` aria-current="${page.barSize === "hour" ? "time" : "date"}"` : "";
-  const tip = d.uptime === null ? t.noData : `${t.checks(pct(d.uptime), d.checks)}${d.ms === null ? "" : `<span>${t.avgMs(d.ms)}</span>`}`;
-  return `<a class="bar ${tone(d, page)}" href="${esc(barHref(page, path, d.day))}" aria-label="${esc(`${when}: ${label}. ${t.openBar}`)}"${current}><span class="tip" aria-hidden="true"><b>${when}</b>${tip}</span></a>`;
+  return `<a class="bar ${tone(d, page)}" href="${esc(barHref(page, path, d.day))}" aria-label="${esc(`${when}: ${label}. ${t.openBar}`)}"${current}>${barTip(d, when, t)}</a>`;
 }
 
 /**
@@ -317,9 +342,12 @@ function selected(s: PublicSelectedBar, page: PublicStatusPage, path: string, t:
     .flatMap((g) => g.components)
     .map((c) => {
       const d = c.days.find((x) => x.day === s.bar);
-      return d
-        ? `<li><span class="dot ${tone(d, page)}"></span><span class="name">${esc(c.name)}</span><span class="muted num">${barLabel(d, t)}</span></li>`
+      if (!d) return "";
+      const hours = s.hours?.[c.id];
+      const strip = hours
+        ? `<div class="bars hours" style="--n:${hours.length}" role="group" aria-label="${esc(t.hoursOf(c.name))}">${hours.map((h) => hourBar(h, page, t, f)).join("")}</div>`
         : "";
+      return `<li><div class="row"><span class="dot ${tone(d, page)}"></span><span class="name">${esc(c.name)}</span><span class="muted num">${barLabel(d, t)}</span></div>${strip}</li>`;
     })
     .join("");
   const incidents = s.incidents.length
@@ -334,6 +362,12 @@ function selected(s: PublicSelectedBar, page: PublicStatusPage, path: string, t:
   <ul class="bar-summary">${rows}</ul>
   ${incidents}
 </section>`;
+}
+
+/** One hour of an opened day: not a link, but focusable so keyboard users get its tooltip too. */
+function hourBar(h: PublicDay, page: PublicStatusPage, t: Text, f: Formats): string {
+  const when = f.time(h.day);
+  return `<span class="bar ${tone(h, page)}" role="img" tabindex="0" aria-label="${esc(`${when}: ${barLabel(h, t)}`)}">${barTip(h, when, t)}</span>`;
 }
 
 function incident(i: PublicIncident, active: boolean, t: Text, f: Formats): string {
