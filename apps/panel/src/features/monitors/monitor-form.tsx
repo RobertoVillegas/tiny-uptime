@@ -3,6 +3,8 @@ import {
   DNS_RECORD_TYPES,
   HTTP_METHODS,
   MonitorInput,
+  type JsonAssertion,
+  type JsonAssertOp,
   validate,
   type Monitor,
   type MonitorDraft,
@@ -72,6 +74,7 @@ type Values = {
   expectedStatus: string;
   keyword: string;
   keywordMode: "contains" | "absent";
+  jsonAssertions: string;
   headers: string;
   body: string;
   host: string;
@@ -100,6 +103,7 @@ function initialValues(monitor?: Monitor): Values {
     expectedStatus: http?.expectedStatus.join(", ") ?? "",
     keyword: http?.keyword?.value ?? "",
     keywordMode: http?.keyword?.mode ?? "contains",
+    jsonAssertions: (http?.jsonAssertions ?? []).map(assertionLine).join("\n"),
     headers:
       m?.headers && typeof m.headers === "object"
         ? Object.entries(m.headers as Record<string, string>)
@@ -140,6 +144,7 @@ function toDraft(v: Values): MonitorDraft {
         headers: parseHeaders(v.headers),
         ...(v.body && v.method !== "GET" && v.method !== "HEAD" ? { body: v.body } : {}),
         ...(v.keyword ? { keyword: { value: v.keyword, mode: v.keywordMode } } : {}),
+        jsonAssertions: parseAssertions(v.jsonAssertions),
       };
     case "tcp":
     case "minecraft":
@@ -196,6 +201,49 @@ function parseHeaders(text: string): Record<string, string> {
   );
 }
 
+/** How each comparison is typed in the JSON checks box. */
+const OP_SYMBOLS: Record<JsonAssertOp, string> = {
+  equals: "==",
+  not_equals: "!=",
+  contains: "contains",
+  exists: "exists",
+  not_exists: "missing",
+  greater_than: ">",
+  less_than: "<",
+};
+const SYMBOL_OPS = new Map<string, JsonAssertOp>(Object.entries(OP_SYMBOLS).map(([op, symbol]) => [symbol, op as JsonAssertOp]));
+
+function assertionLine(a: JsonAssertion): string {
+  return [a.path, OP_SYMBOLS[a.op], a.op.endsWith("exists") ? "" : a.value].filter(Boolean).join(" ");
+}
+
+/**
+ * "path op value" lines, such as `$.status == ok`. The path ends at the first space outside
+ * brackets, so `$["odd key"] exists` works; a line the box cannot read is sent as an `equals`
+ * with an unknown op so the server's message points at it.
+ */
+function parseAssertions(text: string): JsonAssertion[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      let depth = 0;
+      let end = 0;
+      while (end < line.length && (depth > 0 || !/\s/.test(line[end]!))) {
+        if (line[end] === "[") depth++;
+        else if (line[end] === "]") depth--;
+        end++;
+      }
+      const path = line.slice(0, end);
+      const rest = line.slice(end).trim();
+      const space = rest.search(/\s/);
+      const symbol = space < 0 ? rest : rest.slice(0, space);
+      const value = space < 0 ? "" : rest.slice(space + 1).trim();
+      return { path, op: SYMBOL_OPS.get(symbol) ?? (symbol as JsonAssertOp), value };
+    });
+}
+
 /** Server and schema field names, mapped to the input that shows the error. */
 function fieldOf(field: string): keyof Values | keyof AlertRules {
   const rule = RULE_FIELDS.find((f) => field === f || field.startsWith(`${f}.`));
@@ -203,6 +251,7 @@ function fieldOf(field: string): keyof Values | keyof AlertRules {
   if (field.startsWith("headers")) return "headers";
   if (field.startsWith("expectedStatus")) return "expectedStatus";
   if (field.startsWith("keyword")) return "keyword";
+  if (field.startsWith("jsonAssertions")) return "jsonAssertions";
   if (field.startsWith("expected.")) return "expectedValue";
   if (field === "timeoutMs") return "timeoutSec";
   return field as keyof Values;
@@ -349,6 +398,24 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
               )}
             </form.Field>
           </div>
+          <form.Field name="jsonAssertions">
+            {(field) => (
+              <Field
+                label="JSON checks"
+                error={errors.jsonAssertions}
+                description="One per line: a path, then ==, !=, contains, >, <, exists or missing, then the value. For example $.status == ok."
+              >
+                <Textarea
+                  rows={2}
+                  spellCheck={false}
+                  placeholder="Optional"
+                  className="font-mono text-[0.8125rem]"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
           {headersField()}
           {method !== "GET" && method !== "HEAD" ? (
             <form.Field name="body">

@@ -17,6 +17,7 @@ type OpenUptimeMonitor = {
   paused?: boolean;
   keyword?: string | null;
   keywordMode?: string;
+  jsonAssertions?: { path: string; op: string; value?: string }[];
   expectedLocation?: string | null;
   headers?: Record<string, string>;
   wsMessage?: string | null;
@@ -102,6 +103,7 @@ export function fromOpenUptime(m: OpenUptimeMonitor): workspace.ImportCandidate 
           ...(body !== undefined ? { body } : {}),
           expectedStatus: m.expectedStatus ? [m.expectedStatus] : [],
           ...(m.keyword ? { keyword: { value: m.keyword, mode: m.keywordMode === "absent" ? "absent" : "contains" } } : {}),
+          ...(m.jsonAssertions?.length ? { jsonAssertions: m.jsonAssertions } : {}),
           timeoutMs,
         },
       };

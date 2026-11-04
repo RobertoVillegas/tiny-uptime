@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { parseJsonPath } from "./json-path";
 
 export const MONITOR_TYPES = [
   "http",
@@ -90,6 +91,28 @@ const headers = v.optional(
   {},
 );
 
+/** Comparisons a JSON assertion can make; the names match OpenUptime's, so imports carry them over. */
+export const JSON_ASSERT_OPS = ["equals", "not_equals", "contains", "exists", "not_exists", "greater_than", "less_than"] as const;
+export type JsonAssertOp = (typeof JSON_ASSERT_OPS)[number];
+export const MAX_JSON_ASSERTIONS = 10;
+
+const JsonAssertion = v.object({
+  path: v.pipe(
+    v.string(),
+    v.trim(),
+    v.minLength(1),
+    v.maxLength(256),
+    v.rawCheck(({ dataset, addIssue }) => {
+      if (!dataset.typed) return;
+      const parsed = parseJsonPath(dataset.value);
+      if (typeof parsed === "string") addIssue({ message: parsed });
+    }),
+  ),
+  op: v.picklist(JSON_ASSERT_OPS),
+  value: v.optional(v.pipe(v.string(), v.maxLength(500)), ""),
+});
+export type JsonAssertion = v.InferOutput<typeof JsonAssertion>;
+
 const HttpMonitor = v.pipe(
   v.object({
     type: v.literal("http"),
@@ -111,6 +134,8 @@ const HttpMonitor = v.pipe(
         mode: v.optional(v.picklist(["contains", "absent"]), "contains"),
       }),
     ),
+    /** Fields of a JSON body that must hold; any failing one fails the check. */
+    jsonAssertions: v.optional(v.pipe(v.array(JsonAssertion), v.maxLength(MAX_JSON_ASSERTIONS)), []),
     timeoutMs,
   }),
   v.forward(
