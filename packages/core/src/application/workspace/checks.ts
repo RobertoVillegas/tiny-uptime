@@ -1,4 +1,6 @@
-import { afterCheck, afterHeartbeat, afterMissedHeartbeat } from "../../domain/monitor/health";
+import { Result } from "better-result";
+import { afterCheck, afterHeartbeat, afterMissedHeartbeat, type CheckOutcome } from "../../domain/monitor/health";
+import { Conflict, NotFound } from "../../errors";
 import type { Monitor } from "../../domain/monitor/monitor";
 import { applyHealthUpdate } from "./health";
 import type { WorkspaceDeps } from "./deps";
@@ -33,6 +35,27 @@ export async function runDueChecks(d: WorkspaceDeps): Promise<void> {
 function stillCurrent(d: WorkspaceDeps, before: Monitor): Monitor | null {
   const monitor = d.monitors.get(before.id);
   return monitor && !monitor.paused && monitor.updatedAt === before.updatedAt ? monitor : null;
+}
+
+/**
+ * Runs one check now, as when someone has just fixed something and wants to see it. It counts
+ * like a scheduled one, so it can resolve an incident; on a paused monitor it only reports.
+ */
+export async function checkNow(
+  d: WorkspaceDeps,
+  id: string,
+): Promise<Result<{ outcome: CheckOutcome; monitor: Monitor }, NotFound | Conflict>> {
+  const before = d.monitors.get(id);
+  if (!before) return Result.err(new NotFound({ message: "monitor not found" }));
+  if (before.type === "heartbeat") return Result.err(new Conflict({ message: "a heartbeat is checked when its ping arrives" }));
+  const outcome = await d.checker.check(before);
+  const monitor = stillCurrent(d, before);
+  if (monitor) {
+    const now = d.clock.now();
+    await applyHealthUpdate(d, monitor, afterCheck(monitor, outcome, now), now);
+    await d.scheduler.sync();
+  }
+  return Result.ok({ outcome, monitor: d.monitors.get(id) ?? before });
 }
 
 /** Returns false for an unknown token, so the caller can answer 404. */

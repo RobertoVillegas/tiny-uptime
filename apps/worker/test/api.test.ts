@@ -173,6 +173,27 @@ describe("monitors", () => {
     expect(activity.monitors[id]).toEqual(stats.series);
   });
 
+  it("checks a monitor on demand, counting the result", async () => {
+    const ws = await newWorkspace();
+    const key = ws.apiKey;
+    const created = await call("POST", "/api/v1/monitors", { key, body: { type: "http", name: "Now", url: "https://now.test/" } });
+    siteStatus["https://now.test/"] = 503;
+    const failed = await call("POST", `/api/v1/monitors/${created.body.id}/check`, { key });
+    expect(failed.status).toBe(200);
+    expect(failed.body).toMatchObject({ ok: false, detail: "HTTP 503", monitor: { id: created.body.id } });
+    siteStatus["https://now.test/"] = 200;
+    const passed = await call("POST", `/api/v1/monitors/${created.body.id}/check`, { key });
+    expect(passed.body).toMatchObject({ ok: true, monitor: { status: "up" } });
+    const stats = (await call("GET", `/api/v1/monitors/${created.body.id}/stats?hours=1`, { key })).body;
+    // The first scheduled check may land in the same hour; both manual ones are counted.
+    expect(stats.series.at(-1).checks).toBeGreaterThanOrEqual(2);
+    expect(stats.series.at(-1).ok).toBeGreaterThanOrEqual(1);
+
+    const beat = await call("POST", "/api/v1/monitors", { key, body: { type: "heartbeat", name: "Cron" } });
+    expect((await call("POST", `/api/v1/monitors/${beat.body.id}/check`, { key })).status).toBe(409);
+    expect((await call("POST", "/api/v1/monitors/nope/check", { key })).status).toBe(404);
+  });
+
   it("fails a keyword check when the word is missing", async () => {
     const ws = await newWorkspace();
     const created = await call("POST", "/api/v1/monitors", {

@@ -34,6 +34,22 @@ export function usePauseMonitor(id: string) {
   });
 }
 
+/** Runs one check now and says what it found. */
+export function useCheckNow(id: string) {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: () => api.monitors.check(id),
+    onSuccess: async (result) => {
+      await refresh();
+      const latency = result.latencyMs === null ? "" : ` in ${result.latencyMs} ms`;
+      notify(result.ok ? `Check passed${latency}` : "Check failed", {
+        type: result.ok ? "success" : "error",
+        description: result.monitor.paused ? `${result.detail}. Paused, so it was not recorded.` : result.detail,
+      });
+    },
+  });
+}
+
 export function useDeleteMonitor() {
   const refresh = useRefresh();
   return useMutation({ mutationFn: (id: string) => api.monitors.remove(id), onSuccess: refresh });

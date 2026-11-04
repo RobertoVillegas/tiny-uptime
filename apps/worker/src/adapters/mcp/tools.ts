@@ -87,7 +87,7 @@ export const TOOLS: readonly Tool[] = [
     title: "Create a monitor",
     description:
       "Creates a monitor. `monitor` takes the same flat fields as the REST API: type, name, intervalSec, and the type's target " +
-      "(http: url, method, headers, expectedStatus, keyword; tcp/minecraft: host, port; heartbeat: graceSec), plus alert rules " +
+      "(http: url, method, headers, expectedStatus, keyword, jsonAssertions [{path, op, value}]; tcp/minecraft: host, port; heartbeat: graceSec), plus alert rules " +
       "(failureThreshold, recoveryThreshold, slowThresholdMs, tags, dependsOn, channelIds). Heartbeat monitors return the URL to ping.",
     inputSchema: object(
       {
@@ -117,6 +117,20 @@ export const TOOLS: readonly Tool[] = [
       if (!parsed.ok) return invalid(parsed.message);
       return answer(c.workspace.updateMonitor(c.principal, str(args, "id"), parsed.value), (m) => presentMonitor(m, c.origin));
     },
+  },
+  {
+    name: "check_monitor",
+    title: "Check a monitor now",
+    description:
+      "Runs one check of a monitor right away and returns whether it passed, its latency and the detail. It counts like a " +
+      "scheduled check, so it can resolve an incident; on a paused monitor it only reports. Not for heartbeats.",
+    inputSchema: object({ id }, ["id"]),
+    annotations: { ...write, openWorldHint: true },
+    run: (args, c) =>
+      answer(c.workspace.checkNow(c.principal, str(args, "id")), ({ outcome, monitor }) => ({
+        ...outcome,
+        monitor: presentMonitor(monitor, c.origin),
+      })),
   },
   {
     name: "pause_monitor",

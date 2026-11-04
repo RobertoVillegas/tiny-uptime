@@ -41,6 +41,15 @@ export function monitorRoutes(router: Router): void {
       "/api/v1/monitors/:id",
       workspaceRoute(async (c) => reply(await c.workspace.deleteMonitor(c.principal, c.params.id!), undefined, 204)),
     )
+    .post(
+      "/api/v1/monitors/:id/check",
+      workspaceRoute(async (c) =>
+        reply(await c.workspace.checkNow(c.principal, c.params.id!), ({ outcome, monitor }) => ({
+          ...outcome,
+          monitor: presentMonitor(monitor, c.url.origin),
+        })),
+      ),
+    )
     .get(
       "/api/v1/monitors/:id/stats",
       workspaceRoute(async (c) =>

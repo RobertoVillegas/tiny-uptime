@@ -9,7 +9,7 @@ import { StatusBadge } from "@tiny-uptime/ui/components/status";
 import { Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { Segmented } from "@tiny-uptime/ui/components/tabs";
 import { notify } from "@tiny-uptime/ui/components/toast";
-import { ChevronLeft, Ellipsis, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { ChevronLeft, Ellipsis, Pause, Pencil, Play, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ms, percent, timeAgo } from "../../lib/format";
 import { incidentsQuery, monitorQuery, statsQuery } from "../../lib/queries";
@@ -18,7 +18,7 @@ import { IncidentList } from "../incidents/incident-list";
 import { NotFound } from "../shell/not-found";
 import { targetOf, typeLabel, every } from "./describe";
 import { MonitorForm } from "./monitor-form";
-import { useDeleteMonitor, usePauseMonitor, useUpdateMonitor } from "./mutations";
+import { useCheckNow, useDeleteMonitor, usePauseMonitor, useUpdateMonitor } from "./mutations";
 import { UptimeBars } from "./uptime-bars";
 
 const RANGES = [
@@ -42,6 +42,7 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
   const incidents = useQuery(incidentsQuery(m.id));
   const update = useUpdateMonitor(m.id);
   const pause = usePauseMonitor(m.id);
+  const check = useCheckNow(m.id);
   const remove = useDeleteMonitor();
   const navigate = useNavigate();
 
@@ -63,6 +64,12 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {m.type === "heartbeat" ? null : (
+            <Button variant="secondary" loading={check.isPending} onClick={() => check.mutate()}>
+              <RefreshCw />
+              Check now
+            </Button>
+          )}
           <Button onClick={() => setEditing(true)}>
             <Pencil />
             Edit

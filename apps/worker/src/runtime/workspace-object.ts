@@ -120,6 +120,10 @@ export class Workspace extends DurableObject<Env> {
     return this.run(p, "read", () => Result.ok(ws.monitorsActivity(this.d)));
   }
 
+  checkNow(p: Principal, id: string) {
+    return this.run(p, "write", () => ws.checkNow(this.d, id));
+  }
+
   monitorStats(p: Principal, id: string, hours: number) {
     return this.run(p, "read", () => ws.monitorStats(this.d, id, hours));
   }
