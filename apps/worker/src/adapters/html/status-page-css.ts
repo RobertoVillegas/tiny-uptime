@@ -38,6 +38,7 @@ export const STATUS_PAGE_CSS = `
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:oklch(.17 .006 255);--surface:oklch(.205 .007 255);--fg:oklch(.95 .004 255);--muted:oklch(.7 .012 255);--line:oklch(.29 .008 255);--none:oklch(.27 .008 255);--up:oklch(.7 .12 150);--warn:oklch(.78 .11 75);--down:oklch(.65 .16 25);--info:oklch(.68 .12 255)}}
 :root[data-theme=dark]{color-scheme:dark;--bg:oklch(.17 .006 255);--surface:oklch(.205 .007 255);--fg:oklch(.95 .004 255);--muted:oklch(.7 .012 255);--line:oklch(.29 .008 255);--none:oklch(.27 .008 255);--up:oklch(.7 .12 150);--warn:oklch(.78 .11 75);--down:oklch(.65 .16 25);--info:oklch(.68 .12 255)}
 *{box-sizing:border-box}
+html{scrollbar-gutter:stable}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 main{max-width:52rem;margin:0 auto;padding:3rem 1rem 4rem;display:flex;flex-direction:column;gap:1.5rem}
 h1{font-size:1.5rem;letter-spacing:-.01em;margin:0}
