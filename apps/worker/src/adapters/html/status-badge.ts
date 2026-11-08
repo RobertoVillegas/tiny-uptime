@@ -1,5 +1,5 @@
 import type { OverallStatus, StatusLanguage } from "@tiny-uptime/contracts";
-import { esc } from "./status-page";
+import { esc } from "./escape";
 
 const MESSAGE: Record<StatusLanguage, { label: string; unknown: string } & Record<OverallStatus, string>> = {
   en: {

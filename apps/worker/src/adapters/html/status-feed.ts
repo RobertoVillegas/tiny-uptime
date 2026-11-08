@@ -1,5 +1,5 @@
 import type { PublicIncident, PublicStatusPage } from "@tiny-uptime/contracts";
-import { esc } from "./status-page";
+import { esc } from "./escape";
 
 /** An RSS 2.0 feed of a status page's incidents, newest first, with their public updates. */
 export function renderStatusFeed(page: PublicStatusPage, link: string): string {

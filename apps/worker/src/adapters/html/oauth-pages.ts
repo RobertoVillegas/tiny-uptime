@@ -1,5 +1,5 @@
 import type { Membership, OAuthScope } from "@tiny-uptime/contracts";
-import { esc } from "./status-page";
+import { esc } from "./escape";
 
 const CSS = `
 :root{color-scheme:light dark;--bg:oklch(.985 .002 255);--surface:oklch(1 0 0);--fg:oklch(.22 .012 255);--muted:oklch(.5 .014 255);--line:oklch(.22 .012 255/.1);--accent:oklch(.22 .012 255);--on-accent:oklch(.985 .002 255);--warn:oklch(.55 .13 75)}
