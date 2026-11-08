@@ -110,7 +110,7 @@ export function ApiKeysSection() {
                 description="Anything using this key stops working right away."
                 confirmLabel="Revoke key"
                 pending={remove.isPending}
-                onConfirm={() => remove.mutate(k.id)}
+                onConfirm={() => remove.mutateAsync(k.id)}
               />
             </li>
           ))}

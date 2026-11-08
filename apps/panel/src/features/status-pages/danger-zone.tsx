@@ -57,7 +57,7 @@ export function DangerZone({ page }: { page: StatusPage }) {
             description="Visitors see bars and uptime from this hour on, and no incidents from before it. Monitors keep their history, and you can show it again here."
             confirmLabel="Reset history"
             pending={reset.isPending && reset.variables === true}
-            onConfirm={() => reset.mutate(true)}
+            onConfirm={() => reset.mutateAsync(true)}
           />
         </div>
       </div>
@@ -74,7 +74,7 @@ export function DangerZone({ page }: { page: StatusPage }) {
           description="Visitors get a not found page instead. Monitors and incidents stay."
           confirmLabel="Delete status page"
           pending={remove.isPending}
-          onConfirm={() => remove.mutate()}
+          onConfirm={() => remove.mutateAsync()}
         />
       </div>
     </Section>

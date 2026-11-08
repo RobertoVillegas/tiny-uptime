@@ -67,7 +67,7 @@ export function MembersSection({ workspaceId, canManage, myUserId }: { workspace
                     description="They lose access to this workspace right away. Their account stays."
                     confirmLabel="Remove member"
                     pending={remove.isPending}
-                    onConfirm={() => remove.mutate(m.userId)}
+                    onConfirm={() => remove.mutateAsync(m.userId)}
                   />
                 </>
               ) : (

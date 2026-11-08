@@ -205,6 +205,29 @@ test("a status page is published from the panel and served publicly", async ({ p
   await expectAccessible(page);
   await page.getByRole("link", { name: "Back to all incidents" }).click();
   await expect(page.getByText("No incidents on this day.")).toHaveCount(0);
+
+  // Reorder, reset history and undo it, then delete the page.
+  await page.goto("/app/status-pages");
+  await page.getByRole("link", { name: "Pub status" }).click();
+  await page.getByRole("combobox", { name: "Add a monitor" }).click();
+  await page.getByRole("option", { name: "Secret job" }).click();
+  await page.getByRole("button", { name: "Move Secret job up" }).click();
+  await expect(page.getByRole("button", { name: "Move Secret job up" })).toBeDisabled();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Status page saved")).toBeVisible();
+  const reordered = await (await request.get(`/s/${slug}`)).text();
+  expect(reordered.indexOf("Secret job")).toBeLessThan(reordered.indexOf("Checkout API"));
+
+  await page.getByRole("button", { name: "Reset history" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Reset history" }).click();
+  await expect(page.getByText(/^History starts /)).toBeVisible();
+  await page.getByRole("button", { name: "Show full history" }).click();
+  await expect(page.getByText(/^Resetting starts the bars/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Delete status page" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete status page" }).click();
+  await expect(page.getByText("No status pages yet")).toBeVisible();
+  expect((await request.get(`/s/${slug}`)).status()).toBe(404);
 });
 
 test("alert channels of other types can be added, and show no secrets", async ({ page, request }) => {
