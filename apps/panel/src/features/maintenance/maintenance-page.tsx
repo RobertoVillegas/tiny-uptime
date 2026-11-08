@@ -107,7 +107,7 @@ function WindowList({ windows, onEdit }: { windows: Maintenance[]; onEdit: (w: M
             description="Monitors it covers alert normally again."
             confirmLabel="Delete maintenance"
             pending={remove.isPending}
-            onConfirm={() => remove.mutate(w.id)}
+            onConfirm={() => remove.mutateAsync(w.id)}
           />
         </li>
       ))}

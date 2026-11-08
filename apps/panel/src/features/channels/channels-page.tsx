@@ -99,7 +99,7 @@ function ChannelRow({ channel: c }: { channel: Channel }) {
         description="Incidents stop being sent there, and pending retries are dropped."
         confirmLabel="Delete channel"
         pending={remove.isPending}
-        onConfirm={() => remove.mutate()}
+        onConfirm={() => remove.mutateAsync()}
       />
       <Menu
         trigger={

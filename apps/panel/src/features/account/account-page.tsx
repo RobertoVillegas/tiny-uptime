@@ -129,7 +129,7 @@ function PasskeysSection() {
                 description="You will not be able to sign in with it anymore."
                 confirmLabel="Remove passkey"
                 pending={remove.isPending}
-                onConfirm={() => remove.mutate(p.id)}
+                onConfirm={() => remove.mutateAsync(p.id)}
               />
             ) : null}
           </li>
@@ -259,7 +259,7 @@ function RecoverySection({ left }: { left: number }) {
           description="The codes you have now stop working."
           confirmLabel="Replace codes"
           pending={issue.isPending}
-          onConfirm={() => issue.mutate()}
+          onConfirm={() => issue.mutateAsync()}
         />
       }
     >
@@ -291,7 +291,7 @@ function SessionsSection() {
           description="Other browsers will have to sign in again. This one stays signed in."
           confirmLabel="Sign out others"
           pending={end.isPending}
-          onConfirm={() => end.mutate()}
+          onConfirm={() => end.mutateAsync()}
         />
       }
     />
@@ -340,7 +340,7 @@ function ConnectedAppsSection() {
                 description="It loses access right away and has to sign in again to come back."
                 confirmLabel="Disconnect"
                 pending={disconnect.isPending}
-                onConfirm={() => disconnect.mutate(a.id)}
+                onConfirm={() => disconnect.mutateAsync(a.id)}
               />
             </li>
           ))}

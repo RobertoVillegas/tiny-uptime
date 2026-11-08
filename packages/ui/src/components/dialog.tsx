@@ -2,7 +2,7 @@ import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "../cn";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "./button";
 
 const backdrop =
@@ -61,17 +61,32 @@ type ConfirmProps = {
   title: ReactNode;
   description: ReactNode;
   confirmLabel: string;
-  onConfirm: () => void | Promise<void>;
+  /** May return a promise; the dialog waits for it before closing. */
+  onConfirm: () => unknown;
   pending?: boolean;
 };
 
-/** Confirms a destructive action. The destructive button sits apart from the safe one. */
+/**
+ * Confirms a destructive action. The destructive button sits apart from the safe one. The dialog
+ * closes once `onConfirm` settles; when it rejects the dialog stays open so the action can be
+ * retried, and the caller's own error handling reports why.
+ */
 export function ConfirmDialog({ trigger, open, onOpenChange, title, description, confirmLabel, onConfirm, pending }: ConfirmProps) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const setOpen = (next: boolean) => {
+    setOwnOpen(next);
+    onOpenChange?.(next);
+  };
+  const confirm = async () => {
+    try {
+      await onConfirm();
+    } catch {
+      return;
+    }
+    setOpen(false);
+  };
   return (
-    <AlertDialog.Root
-      {...(open !== undefined ? { open } : {})}
-      {...(onOpenChange ? { onOpenChange: (o: boolean) => onOpenChange(o) } : {})}
-    >
+    <AlertDialog.Root open={open ?? ownOpen} onOpenChange={setOpen}>
       {trigger ? <AlertDialog.Trigger render={trigger} /> : null}
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={backdrop} />
@@ -80,7 +95,7 @@ export function ConfirmDialog({ trigger, open, onOpenChange, title, description,
           <AlertDialog.Description className="mt-1 text-muted-foreground">{description}</AlertDialog.Description>
           <div className="mt-6 flex justify-between gap-3">
             <AlertDialog.Close render={<Button variant="secondary" />}>Cancel</AlertDialog.Close>
-            <Button variant="danger" loading={pending ?? false} onClick={() => void onConfirm()}>
+            <Button variant="danger" loading={pending ?? false} onClick={() => void confirm()}>
               {confirmLabel}
             </Button>
           </div>
