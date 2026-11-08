@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { ApiError, api, messageOf } from "../../lib/api";
 import { maintenanceQuery, monitorsQuery } from "../../lib/queries";
 import { browserTimezone, isoToLocal, localToIso, timezones } from "../../lib/zoned";
+import { fieldMessage } from "../../lib/forms";
 
 const WEEKDAYS = [
   { value: "1", label: "Monday" },
@@ -86,7 +87,7 @@ export function MaintenanceForm({ window, onDone }: { window?: Maintenance; onDo
       onDone();
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.field) setErrors({ [error.field.split(".")[0]!]: tidy(error.message) });
+      if (error instanceof ApiError && error.field) setErrors({ [error.field.split(".")[0]!]: fieldMessage(error.field, error.message) });
       else setErrors({ form: messageOf(error) });
     },
   });
@@ -95,7 +96,7 @@ export function MaintenanceForm({ window, onDone }: { window?: Maintenance; onDo
     const draft = toDraft(v);
     const checked = validate(MaintenanceInput, draft);
     if (!checked.ok) {
-      setErrors({ [checked.field.split(".")[0]!]: tidy(checked.message) });
+      setErrors({ [checked.field.split(".")[0]!]: fieldMessage(checked.field, checked.message) });
       return;
     }
     setErrors({});
@@ -171,9 +172,4 @@ export function MaintenanceForm({ window, onDone }: { window?: Maintenance; onDo
       </div>
     </form>
   );
-}
-
-function tidy(message: string): string {
-  const text = message.includes(": ") ? message.slice(message.indexOf(": ") + 2) : message;
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

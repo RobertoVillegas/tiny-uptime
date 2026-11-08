@@ -10,6 +10,7 @@ import { useState } from "react";
 import { api, ApiError, messageOf } from "../../lib/api";
 import { channelsQuery } from "../../lib/queries";
 import { CHANNEL_FIELDS, CHANNEL_TYPE_OPTIONS, type SettingField } from "./channel-types";
+import { fieldMessage } from "../../lib/forms";
 
 /** Every setting is text in the form; only the chosen type's are sent. */
 type Values = { type: ChannelType; name: string; priority: string } & Record<Exclude<SettingField, "priority">, string>;
@@ -43,11 +44,6 @@ function toDraft(v: Values): ChannelDraft {
   } as ChannelDraft;
 }
 
-function tidy(message: string, field: string): string {
-  const text = message.startsWith(`${field}: `) ? message.slice(field.length + 2) : message;
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 export function ChannelForm({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const [errors, setErrors] = useState<Partial<Record<keyof Values, string>>>({});
@@ -68,14 +64,14 @@ export function ChannelForm({ onDone }: { onDone: () => void }) {
       const draft = toDraft(value);
       const checked = validate(ChannelInput, draft);
       if (!checked.ok) {
-        setErrors({ [checked.field]: tidy(checked.message, checked.field) });
+        setErrors({ [checked.field]: fieldMessage(checked.field, checked.message) });
         return;
       }
       setErrors({});
       try {
         await create.mutateAsync(draft);
       } catch (error) {
-        if (error instanceof ApiError && error.field) setErrors({ [error.field]: tidy(error.message, error.field) });
+        if (error instanceof ApiError && error.field) setErrors({ [error.field]: fieldMessage(error.field, error.message) });
         else setFormError(messageOf(error));
       }
     },
