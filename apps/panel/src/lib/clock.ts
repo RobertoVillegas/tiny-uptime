@@ -1,3 +1,5 @@
+import { isOneOf } from "@tiny-uptime/contracts";
+
 /** How the panel shows times: the browser's habit, or a fixed 12- or 24-hour clock. Kept per browser. */
 export const CLOCKS = [
   { value: "auto", label: "Browser default" },
@@ -11,7 +13,12 @@ const KEY = "tiny-uptime.clock";
 export function storedClock(): Clock {
   try {
     const stored = localStorage.getItem(KEY);
-    return CLOCKS.some((c) => c.value === stored) ? (stored as Clock) : "auto";
+    return isOneOf(
+      CLOCKS.map((c) => c.value),
+      stored,
+    )
+      ? stored
+      : "auto";
   } catch {
     return "auto";
   }

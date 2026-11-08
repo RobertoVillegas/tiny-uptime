@@ -62,17 +62,17 @@ export function AlertPolicySection() {
         >
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Remind" description="Repeats the alert on the monitor's channels.">
-              <Select
+              <Select<string>
                 label="Remind"
-                value={String(draft.reminderEveryMinutes) as (typeof REMINDERS)[number]["value"]}
+                value={String(draft.reminderEveryMinutes)}
                 onValueChange={(v) => setDraft({ ...draft, reminderEveryMinutes: Number(v) })}
                 options={REMINDERS}
               />
             </Field>
             <Field label="Escalate outages" description="Sends one alert to the channels below.">
-              <Select
+              <Select<string>
                 label="Escalate outages"
-                value={String(draft.escalateAfterMinutes) as (typeof ESCALATION)[number]["value"]}
+                value={String(draft.escalateAfterMinutes)}
                 onValueChange={(v) => setDraft({ ...draft, escalateAfterMinutes: Number(v) })}
                 options={ESCALATION}
               />

@@ -1,4 +1,5 @@
 import { HISTORY_RANGES, type HistoryRange, type StatusPage, type StatusPageDraft } from "@tiny-uptime/contracts";
+import { browserTimezone } from "../../lib/zoned";
 
 /** The editor's state: what the inputs hold, with numbers kept as typed until the page is saved. */
 export type Draft = Required<
@@ -20,7 +21,7 @@ export function draftOf(page?: StatusPage): Draft {
     description: page?.description ?? "",
     theme: page?.theme ?? "auto",
     language: page?.language ?? "en",
-    timeZone: page?.timeZone ?? browserZone(),
+    timeZone: page?.timeZone ?? (browserTimezone() || "UTC"),
     historyDays: `${page?.historyDays ?? 90}`,
     incidentDays: `${page?.incidentDays ?? 14}`,
     showLatency: page?.showLatency ?? true,
@@ -53,13 +54,3 @@ export const RANGE_OPTIONS = HISTORY_RANGES.map((days) => ({
   value: `${days}` as const,
   label: days === 1 ? "24 hours, hour by hour" : `${days} days`,
 }));
-
-/** Every zone the browser knows, for the time zone field's suggestions. */
-export const ZONES = (() => {
-  const zones = Intl.supportedValuesOf("timeZone");
-  return zones.includes("UTC") ? zones : ["UTC", ...zones];
-})();
-
-function browserZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-}

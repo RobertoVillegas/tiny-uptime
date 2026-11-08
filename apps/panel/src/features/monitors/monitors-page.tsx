@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { Monitor, MonitorBulk, MonitorsActivity } from "@tiny-uptime/contracts";
+import { isOneOf, type Monitor, type MonitorBulk, type MonitorsActivity } from "@tiny-uptime/contracts";
 import { Button } from "@tiny-uptime/ui/components/button";
 import { CheckboxList, Tick } from "@tiny-uptime/ui/components/checkbox";
 import { ConfirmDialog, Dialog } from "@tiny-uptime/ui/components/dialog";
@@ -213,7 +213,12 @@ const STATUS_ORDER: Record<Monitor["status"], number> = { down: 0, degraded: 1, 
 function storedSort(): SortKey {
   try {
     const stored = localStorage.getItem(SORT_KEY);
-    return SORTS.some((s) => s.value === stored) ? (stored as SortKey) : "status";
+    return isOneOf(
+      SORTS.map((s) => s.value),
+      stored,
+    )
+      ? stored
+      : "status";
   } catch {
     return "status";
   }

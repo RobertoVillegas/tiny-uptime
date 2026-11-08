@@ -4,6 +4,7 @@ export * from "./api-key";
 export * from "./auth";
 export * from "./channel";
 export * from "./errors";
+export * from "./guards";
 export * from "./incident";
 export * from "./json-path";
 export * from "./maintenance";

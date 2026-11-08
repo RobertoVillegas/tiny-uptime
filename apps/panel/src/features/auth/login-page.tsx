@@ -27,7 +27,7 @@ export function LoginPage() {
     mutationFn: async () => {
       const { challengeId, challenge } = await api.auth.loginOptions();
       const authentication = await usePasskey(challenge);
-      return api.auth.loginComplete(challengeId, authentication as unknown as Record<string, unknown>);
+      return api.auth.loginComplete(challengeId, authentication);
     },
     onMutate: () => setError(null),
     onSuccess: async (result) => (result.stage === "mfa" ? setStage("mfa") : finish()),

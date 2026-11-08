@@ -62,7 +62,7 @@ function SignUp({ token, description }: { token: string; description: React.Reac
         token,
         name: name.trim(),
         challengeId: options.challengeId,
-        registration: registration as unknown as Record<string, unknown>,
+        registration: registration,
       });
     },
     onSuccess: (result) => setCodes(result.recoveryCodes),
