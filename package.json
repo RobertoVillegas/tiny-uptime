@@ -12,8 +12,9 @@
     "format": "oxfmt --check .",
     "format:write": "oxfmt .",
     "check:boundaries": "node scripts/check-boundaries.ts",
+    "check:design": "node scripts/check-design.ts",
     "budget": "turbo run budget",
-    "verify": "pnpm format && pnpm lint && pnpm check:boundaries && pnpm typecheck && pnpm test && pnpm budget",
+    "verify": "pnpm format && pnpm lint && pnpm check:boundaries && pnpm check:design && pnpm typecheck && pnpm test && pnpm budget",
     "deploy": "pnpm build && pnpm --filter @tiny-uptime/worker deploy",
     "e2e": "turbo run build --filter=@tiny-uptime/panel && pnpm --filter @tiny-uptime/panel e2e"
   },

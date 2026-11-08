@@ -29,7 +29,7 @@
     outline-offset: 2px;
   }
   ::selection {
-    background: oklch(0.6 0.17 255 / 0.25);
+    background: color-mix(in oklch, var(--ring) 25%, transparent);
   }
   @media (prefers-reduced-motion: reduce) {
     *,

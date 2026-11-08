@@ -30,6 +30,7 @@ export type ColorToken =
   | "up"
   | "down"
   | "pending"
+  | "pending-foreground"
   | "paused"
   | "info"
   | "empty"
@@ -55,6 +56,8 @@ const light: Scheme = {
   up: "oklch(0.63 0.15 150)",
   down: "oklch(0.58 0.2 25)",
   pending: "oklch(0.74 0.14 75)",
+  /** Amber dark enough to read as text on the background, for warnings in prose. */
+  "pending-foreground": "oklch(0.55 0.13 75)",
   paused: "oklch(0.7 0.01 255)",
   /** Maintenance and other notices that are neither good nor bad. */
   info: "oklch(0.6 0.15 255)",
@@ -80,6 +83,7 @@ const dark: Scheme = {
   up: "oklch(0.7 0.12 150)",
   down: "oklch(0.65 0.16 25)",
   pending: "oklch(0.78 0.11 75)",
+  "pending-foreground": "oklch(0.78 0.11 75)",
   paused: "oklch(0.55 0.01 255)",
   info: "oklch(0.68 0.12 255)",
   empty: "oklch(0.27 0.008 255)",

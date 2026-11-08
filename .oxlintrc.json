@@ -13,5 +13,13 @@
       }
     ],
     "oxc/no-async-endpoint-handlers": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["apps/*/src/**", "packages/*/src/**"],
+      "rules": {
+        "typescript/no-explicit-any": "error"
+      }
+    }
+  ]
 }
