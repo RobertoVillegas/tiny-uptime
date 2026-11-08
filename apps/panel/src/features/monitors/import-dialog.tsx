@@ -132,7 +132,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
         {preview ? <PreviewList report={preview} /> : null}
         {error ? (
-          <p role="alert" className="text-[0.8125rem] text-down">
+          <p role="alert" className="text-small text-down">
             {messageOf(error)}
           </p>
         ) : null}
@@ -167,7 +167,7 @@ function PreviewList({ report }: { report: ImportReport }) {
   const counts = (status: ImportRow["status"]) => report.rows.filter((r) => r.status === status).length;
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[0.8125rem] text-muted-foreground">
+      <p className="text-small text-muted-foreground">
         {counts("ready")} to import · {counts("duplicate")} already here · {counts("invalid")} cannot be imported
       </p>
       <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-control border border-border">
@@ -175,20 +175,16 @@ function PreviewList({ report }: { report: ImportReport }) {
           <li key={`${row.name}-${i}`} className="flex flex-col gap-0.5 px-3 py-2.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="truncate font-medium">{row.name}</span>
-              <span
-                className={
-                  row.status === "invalid" ? "shrink-0 text-[0.8125rem] text-down" : "shrink-0 text-[0.8125rem] text-muted-foreground"
-                }
-              >
+              <span className={row.status === "invalid" ? "shrink-0 text-small text-down" : "shrink-0 text-small text-muted-foreground"}>
                 {STATUS_TEXT[row.status]}
               </span>
             </div>
-            <span className="text-[0.8125rem] text-muted-foreground">
+            <span className="text-small text-muted-foreground">
               {typeLabel(row.type as MonitorType) ?? row.type}
               {row.message && row.status === "invalid" ? ` · ${row.message}` : ""}
             </span>
             {row.notes.map((note) => (
-              <span key={note} className="text-[0.8125rem] text-muted-foreground">
+              <span key={note} className="text-small text-muted-foreground">
                 {note}
               </span>
             ))}

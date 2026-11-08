@@ -28,11 +28,18 @@ const rules: Rule[] = [
   { layer: "packages/core/src/index.ts", mayImport: ["packages/core/src"] },
   { layer: "packages/core/test", mayImport: ["packages/core/src", "packages/contracts/src"] },
   { layer: "packages/ui/src", mayImport: [] },
+  { layer: "packages/ui/scripts", mayImport: ["packages/ui/src/tokens.ts"] },
   { layer: "packages/client/src", mayImport: ["packages/contracts/src"] },
   { layer: "apps/panel/src", mayImport: ["packages/contracts/src", "packages/client/src", "packages/ui/src"] },
   {
     layer: "apps/worker/src/adapters",
-    mayImport: ["packages/core/src", "packages/contracts/src", "apps/worker/src/runtime/env.ts", "apps/worker/src/runtime/wire.ts"],
+    mayImport: [
+      "packages/core/src",
+      "packages/contracts/src",
+      "packages/ui/src/tokens.ts",
+      "apps/worker/src/runtime/env.ts",
+      "apps/worker/src/runtime/wire.ts",
+    ],
     cloudflare: true,
   },
   {
@@ -117,6 +124,15 @@ function declaredDependencies(file: string): Set<string> {
   return new Set();
 }
 
+/** The file a workspace import lands on, so `@tiny-uptime/ui/tokens` is told apart from the components. */
+function workspaceTarget(specifier: string): string | undefined {
+  const name = packageName(specifier);
+  const entry = workspacePackages[name];
+  const subpath = specifier.slice(name.length + 1);
+  if (!entry || !subpath || /\.tsx?$/.test(entry)) return entry;
+  return resolveRelative(join(root, entry, "index.ts"), `./${subpath}`);
+}
+
 function packageName(specifier: string): string {
   return specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0]!;
 }
@@ -142,7 +158,7 @@ for (const file of sources) {
       if (!rule.cloudflare) problems.push(`${path}: imports ${specifier}, but only apps/worker may use Cloudflare APIs`);
       continue;
     }
-    const internal = specifier.startsWith(".") ? resolveRelative(file, specifier) : workspacePackages[packageName(specifier)];
+    const internal = specifier.startsWith(".") ? resolveRelative(file, specifier) : workspaceTarget(specifier);
     if (internal) {
       if (specifier.startsWith("@") && !declared.has(packageName(specifier)))
         problems.push(`${path}: imports ${specifier} without declaring it`);

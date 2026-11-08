@@ -151,7 +151,7 @@ export function AlertRulesFields({ value, onChange, errors, monitorId, type }: P
             options={(channels.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
           />
         ) : (
-          <p className="text-[0.8125rem] text-muted-foreground">No alert channels yet. Add one under Alerts.</p>
+          <p className="text-small text-muted-foreground">No alert channels yet. Add one under Alerts.</p>
         )}
       </FieldGroup>
       <Field label="Tags" description="Separate with commas, like production, api." error={errors.tags}>

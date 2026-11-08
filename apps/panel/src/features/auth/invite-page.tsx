@@ -26,7 +26,7 @@ export function InvitePage() {
         title="This invite does not work"
         description="It may have expired or been used already. Ask the person who invited you for a new link."
       >
-        <Link to="/login" className="text-[0.8125rem] font-medium underline underline-offset-4">
+        <Link to="/login" className="text-small font-medium underline underline-offset-4">
           Go to sign in
         </Link>
       </AuthLayout>
@@ -105,7 +105,7 @@ function SignUp({ token, description }: { token: string; description: React.Reac
           <KeyRound />
           Create passkey and join
         </Button>
-        <p className="text-[0.8125rem] text-pretty text-muted-foreground">
+        <p className="text-small text-pretty text-muted-foreground">
           A passkey replaces a password: your device keeps it and unlocks it with Face ID, Touch ID or your screen lock.
         </p>
       </form>

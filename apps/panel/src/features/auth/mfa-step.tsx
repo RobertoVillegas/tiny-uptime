@@ -18,7 +18,7 @@ export function MfaStep({ onDone }: { onDone: () => void | Promise<void> }) {
     >
       <CodeInput value={code} onValueChange={setCode} invalid={verify.isError} autoFocus />
       {verify.isError ? (
-        <p role="alert" className="text-[0.8125rem] text-down">
+        <p role="alert" className="text-small text-down">
           {messageOf(verify.error)}
         </p>
       ) : null}

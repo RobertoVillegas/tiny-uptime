@@ -56,16 +56,16 @@ export function LoginPage() {
           Sign in with a passkey
         </Button>
         {!passkeysAvailable() ? (
-          <p className="text-[0.8125rem] text-down">
+          <p className="text-small text-down">
             This browser does not support passkeys. Try a current version of Safari, Chrome or Firefox.
           </p>
         ) : null}
         {error ? (
-          <p role="alert" className="text-[0.8125rem] text-down">
+          <p role="alert" className="text-small text-down">
             {error}
           </p>
         ) : null}
-        <p className="text-center text-[0.8125rem] text-muted-foreground">
+        <p className="text-center text-small text-muted-foreground">
           Lost your passkey?{" "}
           <Link to="/recover" className="font-medium text-foreground underline underline-offset-4">
             Use a recovery code

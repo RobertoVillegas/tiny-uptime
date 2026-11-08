@@ -114,7 +114,7 @@ function DeclareButton() {
             />
           </Field>
           {error && !["title", "monitorIds", "message"].includes(error.field) ? (
-            <p className="text-[0.8125rem] text-down">{error.message}</p>
+            <p className="text-small text-down">{error.message}</p>
           ) : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

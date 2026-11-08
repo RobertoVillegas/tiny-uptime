@@ -19,12 +19,12 @@ export function Segmented<T extends string>({
           <TabsPrimitive.Tab
             key={o.value}
             value={o.value}
-            className="relative z-10 h-7 rounded-[calc(var(--radius-control)-0.125rem)] px-2.5 text-[0.8125rem] font-medium text-muted-foreground transition-colors duration-150 data-[selected]:text-foreground"
+            className="relative z-10 h-7 rounded-[calc(var(--radius-control)-0.125rem)] px-2.5 text-small font-medium text-muted-foreground transition-colors duration-150 data-selected:text-foreground"
           >
             {o.label}
           </TabsPrimitive.Tab>
         ))}
-        <TabsPrimitive.Indicator className="absolute top-0.5 left-[var(--active-tab-left)] h-7 w-[var(--active-tab-width)] rounded-[calc(var(--radius-control)-0.125rem)] bg-surface shadow-sm transition-[left,width] duration-200 ease-out" />
+        <TabsPrimitive.Indicator className="absolute top-0.5 left-(--active-tab-left) h-7 w-(--active-tab-width) rounded-[calc(var(--radius-control)-0.125rem)] bg-surface shadow-sm transition-[left,width] duration-200 ease-out" />
       </TabsPrimitive.List>
     </TabsPrimitive.Root>
   );

@@ -1,5 +1,5 @@
 import { Select as SelectPrimitive } from "@base-ui/react/select";
-import { cn } from "cn";
+import { cn } from "../cn";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { inputClass } from "./input";
 
@@ -46,8 +46,8 @@ export function Select<T extends string>({
         <SelectPrimitive.Positioner sideOffset={4} className="z-50" alignItemWithTrigger={false}>
           <SelectPrimitive.Popup
             className={cn(
-              "min-w-[var(--anchor-width)] origin-[var(--transform-origin)] rounded-control bg-surface-raised p-1 shadow-raised outline-none",
-              "transition-[opacity,scale] duration-150 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+              "min-w-(--anchor-width) origin-(--transform-origin) rounded-control bg-surface-raised p-1 shadow-raised outline-none",
+              "transition-[opacity,scale] duration-150 ease-out data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:opacity-0",
             )}
           >
             <SelectPrimitive.List aria-label={label}>
@@ -55,7 +55,7 @@ export function Select<T extends string>({
                 <SelectPrimitive.Item
                   key={option.value}
                   value={option.value}
-                  className="flex h-8 cursor-default items-center justify-between gap-3 rounded-[calc(var(--radius-control)-0.25rem)] px-2 text-sm outline-none select-none data-[highlighted]:bg-subtle max-sm:h-11"
+                  className="flex h-8 cursor-default items-center justify-between gap-3 rounded-inner px-2 text-sm outline-none select-none data-highlighted:bg-subtle max-sm:h-11"
                 >
                   <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator>

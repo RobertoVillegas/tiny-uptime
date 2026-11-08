@@ -208,9 +208,6 @@ importers:
       '@tiny-uptime/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      cn:
-        specifier: 0.5.0
-        version: 0.5.0
       lucide-react:
         specifier: 1.59.0
         version: 1.59.0(@types/react@19.3.0)(react@19.3.1)
@@ -266,6 +263,9 @@ importers:
       '@tiny-uptime/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@tiny-uptime/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       better-result:
         specifier: 3.0.1
         version: 3.0.1

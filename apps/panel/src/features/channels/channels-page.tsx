@@ -83,7 +83,7 @@ function ChannelRow({ channel: c }: { channel: Channel }) {
     <li className="flex items-center gap-3 px-5 py-3.5">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate font-medium">{c.name}</span>
-        <span className="truncate text-[0.8125rem] text-muted-foreground">
+        <span className="truncate text-small text-muted-foreground">
           {CHANNEL_TYPE_LABEL[c.type]} · {c.target}
           {c.enabled ? "" : " · paused"}
         </span>

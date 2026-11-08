@@ -1,5 +1,5 @@
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { cn } from "cn";
+import { cn } from "../cn";
 import { Check, Minus } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
@@ -18,8 +18,8 @@ export function Checkbox({
         id={id}
         aria-labelledby={labelId}
         className={cn(
-          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-border-strong bg-surface transition-colors duration-150",
-          "data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground",
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-surface transition-colors duration-150",
+          "data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground",
         )}
         {...props}
       >
@@ -29,7 +29,7 @@ export function Checkbox({
       </CheckboxPrimitive.Root>
       <label htmlFor={id} className="flex flex-col gap-0.5 select-none">
         <span id={labelId}>{label}</span>
-        {description ? <span className="text-[0.8125rem] text-muted-foreground">{description}</span> : null}
+        {description ? <span className="text-small text-muted-foreground">{description}</span> : null}
       </label>
     </div>
   );
@@ -64,9 +64,9 @@ export function Tick({ className, ...props }: CheckboxPrimitive.Root.Props & { "
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-border-strong bg-surface transition-colors duration-150",
-        "data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground",
-        "data-[indeterminate]:border-primary data-[indeterminate]:bg-primary data-[indeterminate]:text-primary-foreground",
+        "flex size-4 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-surface transition-colors duration-150",
+        "data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground",
+        "data-indeterminate:border-primary data-indeterminate:bg-primary data-indeterminate:text-primary-foreground",
         "outline-offset-2 max-sm:size-5",
         className,
       )}

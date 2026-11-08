@@ -48,7 +48,7 @@ export function StatusPagesPage() {
                   className="flex min-w-0 flex-1 flex-col gap-0.5 hover:underline hover:underline-offset-4"
                 >
                   <span className="truncate font-medium">{p.title}</span>
-                  <span className="truncate text-[0.8125rem] text-muted-foreground">
+                  <span className="truncate text-small text-muted-foreground">
                     {p.components.length} {p.components.length === 1 ? "monitor" : "monitors"} · {p.url.replace(/^https?:\/\//, "")}
                   </span>
                 </Link>

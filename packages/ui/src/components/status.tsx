@@ -1,5 +1,5 @@
 export type MonitorStatus = "up" | "degraded" | "down" | "pending" | "paused";
-import { cn } from "cn";
+import { cn } from "../cn";
 
 const COPY: Record<MonitorStatus, string> = { up: "Up", degraded: "Slow", down: "Down", pending: "Pending", paused: "Paused" };
 const DOT: Record<MonitorStatus, string> = {
@@ -13,7 +13,7 @@ const DOT: Record<MonitorStatus, string> = {
 /** Status as a dot plus a word, never color alone. A down monitor's dot pulses softly. */
 export function StatusBadge({ status, className }: { status: MonitorStatus; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-[0.8125rem] font-medium", className)}>
+    <span className={cn("inline-flex items-center gap-1.5 text-small font-medium", className)}>
       <StatusDot status={status} />
       {COPY[status]}
     </span>

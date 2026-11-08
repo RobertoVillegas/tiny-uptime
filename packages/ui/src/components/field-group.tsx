@@ -18,11 +18,11 @@ export function FieldGroup({
 }) {
   return (
     <fieldset className="flex min-w-0 flex-col gap-1.5">
-      <legend className="mb-1.5 text-[0.8125rem] font-medium">{legend}</legend>
+      <legend className="mb-1.5 text-small font-medium">{legend}</legend>
       {children}
-      {description && !error ? <p className="text-[0.8125rem] text-muted-foreground">{description}</p> : null}
+      {description && !error ? <p className="text-small text-muted-foreground">{description}</p> : null}
       {error ? (
-        <p role="alert" className="flex items-start gap-1.5 text-[0.8125rem] text-down">
+        <p role="alert" className="flex items-start gap-1.5 text-small text-down">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {error}
         </p>

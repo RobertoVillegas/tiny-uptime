@@ -1,5 +1,5 @@
 import { Popover } from "@base-ui/react/popover";
-import { cn } from "cn";
+import { cn } from "../cn";
 import type { ReactElement, ReactNode } from "react";
 
 /**
@@ -14,8 +14,8 @@ export function HoverCard({ trigger, children, className }: { trigger: ReactElem
         <Popover.Positioner side="top" sideOffset={8} className="z-50">
           <Popover.Popup
             className={cn(
-              "w-72 origin-[var(--transform-origin)] rounded-control bg-surface-raised p-3 text-[0.8125rem] shadow-raised outline-none",
-              "transition-[opacity,scale] duration-100 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
+              "w-72 origin-(--transform-origin) rounded-control bg-surface-raised p-3 text-small shadow-raised outline-none",
+              "transition-[opacity,scale] duration-100 ease-out data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:opacity-0",
               className,
             )}
           >

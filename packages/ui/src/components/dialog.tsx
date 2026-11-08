@@ -1,17 +1,17 @@
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { cn } from "cn";
+import { cn } from "../cn";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./button";
 
 const backdrop =
-  "fixed inset-0 bg-black/30 transition-opacity duration-150 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 dark:bg-black/60";
+  "fixed inset-0 bg-black/30 transition-opacity duration-150 ease-out data-starting-style:opacity-0 data-ending-style:opacity-0 dark:bg-black/60";
 const popup = cn(
   "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col",
   "overflow-y-auto rounded-card bg-surface-raised p-6 shadow-raised outline-none",
-  "transition-[opacity,scale] duration-150 ease-out data-[starting-style]:scale-96 data-[starting-style]:opacity-0",
-  "data-[ending-style]:scale-98 data-[ending-style]:opacity-0 data-[ending-style]:ease-in",
+  "transition-[opacity,scale] duration-150 ease-out data-starting-style:scale-96 data-starting-style:opacity-0",
+  "data-ending-style:scale-98 data-ending-style:opacity-0 data-ending-style:ease-in",
 );
 
 type DialogProps = {

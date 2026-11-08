@@ -142,7 +142,7 @@ export function ChannelForm({ onDone }: { onDone: () => void }) {
         </form.Field>
       ) : null}
       {formError ? (
-        <p role="alert" className="text-[0.8125rem] text-down">
+        <p role="alert" className="text-small text-down">
           {formError}
         </p>
       ) : null}

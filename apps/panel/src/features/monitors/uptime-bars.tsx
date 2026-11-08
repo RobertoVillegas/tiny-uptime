@@ -1,6 +1,6 @@
 import type { Incident, MonitorStats } from "@tiny-uptime/contracts";
 import { HoverCard } from "@tiny-uptime/ui/components/hover-card";
-import { cn } from "cn";
+import { cn } from "@tiny-uptime/ui/cn";
 import { duration, percent } from "../../lib/format";
 import { hourOptions } from "../../lib/clock";
 
@@ -29,7 +29,7 @@ export function UptimeBars({ stats, incidents = [] }: { stats: MonitorStats; inc
       <div
         aria-label={`Uptime over the last ${stats.hours} hours: ${percent(stats.uptime)}`}
         role="group"
-        className="flex h-10 items-stretch gap-[3px]"
+        className="flex h-10 items-stretch gap-0.75"
       >
         {bins.map((bin) => (
           <HoverCard
@@ -39,7 +39,7 @@ export function UptimeBars({ stats, incidents = [] }: { stats: MonitorStats; inc
                 type="button"
                 aria-label={`${range(bin)}: ${bin.checks ? `${percent(bin.ok / bin.checks)} up` : "no checks"}`}
                 className={cn(
-                  "flex-1 rounded-[2px] outline-offset-1 transition-opacity duration-100 hover:opacity-75 data-[popup-open]:opacity-75",
+                  "flex-1 rounded-xs outline-offset-1 transition-opacity duration-100 hover:opacity-75 data-popup-open:opacity-75",
                   colorOf(bin),
                 )}
               />
@@ -49,7 +49,7 @@ export function UptimeBars({ stats, incidents = [] }: { stats: MonitorStats; inc
           </HoverCard>
         ))}
       </div>
-      <div className="flex justify-between text-[0.75rem] text-muted-foreground">
+      <div className="flex justify-between text-caption text-muted-foreground">
         <span>{stats.hours <= 24 ? "24 hours ago" : stats.hours <= 168 ? "7 days ago" : "30 days ago"}</span>
         <span>Now</span>
       </div>

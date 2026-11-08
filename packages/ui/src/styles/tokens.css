@@ -1,0 +1,35 @@
+/* Generated from ../tokens.ts by `pnpm --filter @tiny-uptime/ui tokens`. Edit that file instead. */
+:root{color-scheme:light;--background:oklch(0.985 0.002 255);--surface:oklch(1 0 0);--surface-raised:oklch(1 0 0);--foreground:oklch(0.22 0.012 255);--muted-foreground:oklch(0.5 0.014 255);--subtle:oklch(0.96 0.004 255);--border:oklch(0.22 0.012 255 / 0.1);--border-strong:oklch(0.22 0.012 255 / 0.18);--border-hover:color-mix(in oklch, var(--foreground) 30%, transparent);--primary:oklch(0.22 0.012 255);--primary-hover:color-mix(in oklch, var(--primary) 88%, var(--background));--primary-foreground:oklch(0.99 0 0);--ring:oklch(0.6 0.17 255);--danger:oklch(0.55 0.2 25);--danger-hover:color-mix(in oklch, var(--danger) 88%, black);--danger-foreground:oklch(0.99 0 0);--up:oklch(0.63 0.15 150);--down:oklch(0.58 0.2 25);--pending:oklch(0.74 0.14 75);--paused:oklch(0.7 0.01 255);--info:oklch(0.6 0.15 255);--empty:oklch(0.93 0.005 255);--shadow-raised:0 1px 1px oklch(0 0 0 / 0.04), 0 4px 8px -2px oklch(0 0 0 / 0.06), 0 16px 32px -8px oklch(0 0 0 / 0.1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--background:oklch(0.17 0.006 255);--surface:oklch(0.205 0.007 255);--surface-raised:oklch(0.24 0.008 255);--foreground:oklch(0.95 0.004 255);--muted-foreground:oklch(0.7 0.012 255);--subtle:oklch(0.24 0.008 255);--border:oklch(0.29 0.008 255);--border-strong:oklch(0.36 0.009 255);--border-hover:color-mix(in oklch, var(--foreground) 30%, transparent);--primary:oklch(0.95 0.004 255);--primary-hover:color-mix(in oklch, var(--primary) 88%, var(--background));--primary-foreground:oklch(0.2 0.008 255);--ring:oklch(0.68 0.14 255);--danger:oklch(0.62 0.17 25);--danger-hover:color-mix(in oklch, var(--danger) 88%, black);--danger-foreground:oklch(0.99 0 0);--up:oklch(0.7 0.12 150);--down:oklch(0.65 0.16 25);--pending:oklch(0.78 0.11 75);--paused:oklch(0.55 0.01 255);--info:oklch(0.68 0.12 255);--empty:oklch(0.27 0.008 255);--shadow-raised:0 0 0 1px var(--border), 0 16px 32px -8px oklch(0 0 0 / 0.5)}}
+:root[data-theme=dark]{color-scheme:dark;--background:oklch(0.17 0.006 255);--surface:oklch(0.205 0.007 255);--surface-raised:oklch(0.24 0.008 255);--foreground:oklch(0.95 0.004 255);--muted-foreground:oklch(0.7 0.012 255);--subtle:oklch(0.24 0.008 255);--border:oklch(0.29 0.008 255);--border-strong:oklch(0.36 0.009 255);--border-hover:color-mix(in oklch, var(--foreground) 30%, transparent);--primary:oklch(0.95 0.004 255);--primary-hover:color-mix(in oklch, var(--primary) 88%, var(--background));--primary-foreground:oklch(0.2 0.008 255);--ring:oklch(0.68 0.14 255);--danger:oklch(0.62 0.17 25);--danger-hover:color-mix(in oklch, var(--danger) 88%, black);--danger-foreground:oklch(0.99 0 0);--up:oklch(0.7 0.12 150);--down:oklch(0.65 0.16 25);--pending:oklch(0.78 0.11 75);--paused:oklch(0.55 0.01 255);--info:oklch(0.68 0.12 255);--empty:oklch(0.27 0.008 255);--shadow-raised:0 0 0 1px var(--border), 0 16px 32px -8px oklch(0 0 0 / 0.5)}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-hover: var(--border-hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-pending: var(--pending);
+  --color-paused: var(--paused);
+  --color-info: var(--info);
+  --color-empty: var(--empty);
+  --shadow-raised: var(--shadow-raised);
+  --text-caption: 0.75rem;
+  --text-small: 0.8125rem;
+  --radius-inner: 0.25rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+}
