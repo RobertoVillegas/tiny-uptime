@@ -87,7 +87,7 @@ function IncidentRow({
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="font-medium">
           {i.declared ? (
-            <span className="mr-1.5 rounded-full bg-subtle px-1.5 py-px text-[0.75rem] font-medium">Declared</span>
+            <span className="mr-1.5 rounded-full bg-subtle px-1.5 py-px text-caption font-medium">Declared</span>
           ) : showMonitor ? (
             <>
               <Link to="/monitors/$monitorId" params={{ monitorId: i.monitorId }} className="hover:underline hover:underline-offset-4">
@@ -97,11 +97,11 @@ function IncidentRow({
             </>
           ) : null}
           {i.kind === "slow" && !i.declared ? (
-            <span className="mr-1.5 rounded-full bg-subtle px-1.5 py-px text-[0.75rem] font-medium">Slow</span>
+            <span className="mr-1.5 rounded-full bg-subtle px-1.5 py-px text-caption font-medium">Slow</span>
           ) : null}
           <span className={showMonitor && !i.declared ? "font-normal" : ""}>{i.cause}</span>
         </p>
-        <p className="text-[0.8125rem] text-muted-foreground">
+        <p className="text-small text-muted-foreground">
           {dateTime(i.startedAt)} ·{" "}
           {open ? `ongoing for ${duration(i.startedAt, null)}` : `resolved after ${duration(i.startedAt, i.resolvedAt)}`}
           {i.declared ? ` · ${i.kind === "slow" ? "degraded" : "outage"} · ${affected(i)}` : i.acknowledgedAt ? " · acknowledged" : ""}

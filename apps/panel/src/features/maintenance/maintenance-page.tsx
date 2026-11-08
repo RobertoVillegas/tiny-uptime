@@ -87,11 +87,11 @@ function WindowList({ windows, onEdit }: { windows: Maintenance[]; onEdit: (w: M
             <span className="flex items-center gap-2 font-medium">
               {w.name}
               {w.active ? (
-                <span className="rounded-full bg-pending/20 px-2 py-0.5 text-[0.75rem] font-medium text-foreground">In progress</span>
+                <span className="rounded-full bg-pending/20 px-2 py-0.5 text-caption font-medium text-foreground">In progress</span>
               ) : null}
             </span>
-            <span className="text-[0.8125rem] text-muted-foreground">{schedule(w)}</span>
-            <span className="truncate text-[0.8125rem] text-muted-foreground">{names(w.monitorIds)}</span>
+            <span className="text-small text-muted-foreground">{schedule(w)}</span>
+            <span className="truncate text-small text-muted-foreground">{names(w.monitorIds)}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => onEdit(w)}>
             <Pencil />

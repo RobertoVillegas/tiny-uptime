@@ -1,5 +1,5 @@
 import { Field } from "@base-ui/react/field";
-import { cn } from "cn";
+import { cn } from "../cn";
 import type { ComponentProps } from "react";
 import { inputClass } from "./input";
 

@@ -315,7 +315,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
           <Textarea
             rows={2}
             spellCheck={false}
-            className="font-mono text-[0.8125rem]"
+            className="font-mono text-small"
             value={field.state.value}
             onChange={(e) => field.handleChange(e.target.value)}
           />
@@ -409,7 +409,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
                   rows={2}
                   spellCheck={false}
                   placeholder="Optional"
-                  className="font-mono text-[0.8125rem]"
+                  className="font-mono text-small"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
@@ -424,7 +424,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
                   <Textarea
                     rows={3}
                     spellCheck={false}
-                    className="font-mono text-[0.8125rem]"
+                    className="font-mono text-small"
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
@@ -545,7 +545,7 @@ export function MonitorForm({ monitor, submitLabel, onSubmit, onCancel }: Props)
       </form.Field>
 
       {formError ? (
-        <p role="alert" className="text-[0.8125rem] text-down">
+        <p role="alert" className="text-small text-down">
           {formError}
         </p>
       ) : null}

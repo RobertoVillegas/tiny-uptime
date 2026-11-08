@@ -44,7 +44,7 @@ export function MembersSection({ workspaceId, canManage, myUserId }: { workspace
                   {m.name}
                   {m.userId === myUserId ? <span className="font-normal text-muted-foreground"> (you)</span> : null}
                 </span>
-                <span className="truncate text-[0.8125rem] text-muted-foreground">{m.email}</span>
+                <span className="truncate text-small text-muted-foreground">{m.email}</span>
               </div>
               {canManage && m.userId !== myUserId ? (
                 <>
@@ -71,7 +71,7 @@ export function MembersSection({ workspaceId, canManage, myUserId }: { workspace
                   />
                 </>
               ) : (
-                <span className="text-[0.8125rem] text-muted-foreground capitalize">{m.role}</span>
+                <span className="text-small text-muted-foreground capitalize">{m.role}</span>
               )}
             </li>
           ))}
@@ -79,7 +79,7 @@ export function MembersSection({ workspaceId, canManage, myUserId }: { workspace
             <li key={i.email} className="flex items-center gap-3 px-5 py-3.5">
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium text-muted-foreground">{i.email}</span>
-                <span className="text-[0.8125rem] text-muted-foreground">Invited as {i.role} · waiting to accept</span>
+                <span className="text-small text-muted-foreground">Invited as {i.role} · waiting to accept</span>
               </div>
             </li>
           ))}
@@ -125,7 +125,7 @@ function InviteDialog({ workspaceId, onInvited }: { workspaceId: string; onInvit
     >
       {link ? (
         <div className="flex flex-col gap-4">
-          <code className="rounded-control bg-subtle px-3 py-2.5 font-mono text-[0.8125rem] break-all">{link}</code>
+          <code className="rounded-control bg-subtle px-3 py-2.5 font-mono text-small break-all">{link}</code>
           <div className="flex justify-end gap-2">
             <CopyButton text={link} label="Copy link" />
             <Button variant="primary" size="sm" onClick={() => close(false)}>

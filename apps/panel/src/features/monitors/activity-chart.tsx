@@ -1,5 +1,5 @@
 import type { MonitorStats } from "@tiny-uptime/contracts";
-import { cn } from "cn";
+import { cn } from "@tiny-uptime/ui/cn";
 import { useState } from "react";
 import { hourOptions } from "../../lib/clock";
 
@@ -65,7 +65,7 @@ export function ActivityChart({
           ) : null}
           <div
             aria-hidden
-            className="pointer-events-none absolute top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-control bg-surface-raised p-3 text-[0.8125rem] shadow-raised"
+            className="pointer-events-none absolute top-full z-50 mt-2 w-72 -translate-x-1/2 rounded-control bg-surface-raised p-3 text-small shadow-raised"
             style={{ left: `${at(hover)}%` }}
           >
             <SlotDetails slot={slot} day={latencies.length ? [Math.min(...latencies), Math.max(...latencies)] : null} />

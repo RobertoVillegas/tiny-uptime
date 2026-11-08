@@ -4,7 +4,7 @@ import { CopyButton } from "@tiny-uptime/ui/components/copy-button";
 export function RecoveryCodes({ codes }: { codes: string[] }) {
   return (
     <div className="flex flex-col gap-3">
-      <ol className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-control bg-subtle p-4 font-mono text-[0.8125rem] tabular-nums">
+      <ol className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-control bg-subtle p-4 font-mono text-small tabular-nums">
         {codes.map((code) => (
           <li key={code}>{code}</li>
         ))}

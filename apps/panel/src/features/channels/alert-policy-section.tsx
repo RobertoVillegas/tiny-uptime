@@ -90,7 +90,7 @@ export function AlertPolicySection() {
               />
             </FieldGroup>
           ) : null}
-          {save.isError ? <p className="text-[0.8125rem] text-down">{messageOf(save.error)}</p> : null}
+          {save.isError ? <p className="text-small text-down">{messageOf(save.error)}</p> : null}
           <div className="flex justify-end">
             <Button type="submit" variant="primary" disabled={!dirty} loading={save.isPending}>
               Save follow-ups

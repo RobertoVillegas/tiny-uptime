@@ -48,14 +48,14 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
 
   return (
     <>
-      <Link to="/monitors" className="mb-4 inline-flex items-center gap-1 text-[0.8125rem] text-muted-foreground hover:text-foreground">
+      <Link to="/monitors" className="mb-4 inline-flex items-center gap-1 text-small text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" aria-hidden />
         Monitors
       </Link>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1.5">
           <h1 className="text-xl font-semibold tracking-tight text-balance">{m.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-muted-foreground">
             <StatusBadge status={m.status} className="text-foreground" />
             <span>
               {typeLabel(m.type)} · {targetOf(m)}
@@ -125,9 +125,7 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
             description={`Send a GET or POST at least every ${every(m.intervalSec)}. It goes down when none arrives within the grace period.`}
           >
             <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
-              <code className="min-w-0 flex-1 truncate rounded-control bg-subtle px-3 py-2 font-mono text-[0.8125rem]">
-                {m.heartbeatUrl}
-              </code>
+              <code className="min-w-0 flex-1 truncate rounded-control bg-subtle px-3 py-2 font-mono text-small">{m.heartbeatUrl}</code>
               <CopyButton text={m.heartbeatUrl} label="Copy URL" />
             </div>
           </Section>
@@ -167,7 +165,7 @@ function Detail({ monitor: m }: { monitor: Monitor }) {
 function Stat({ label, value, className }: { label: string; value: string | null; className?: string }) {
   return (
     <div className={`flex flex-col gap-1 bg-surface px-5 py-4 ${className ?? ""}`}>
-      <span className="text-[0.8125rem] text-muted-foreground">{label}</span>
+      <span className="text-small text-muted-foreground">{label}</span>
       {value === null ? <Skeleton className="h-6 w-20" /> : <span className="truncate text-lg font-semibold tabular-nums">{value}</span>}
     </div>
   );

@@ -161,7 +161,7 @@ function Editor({ page }: { page: StatusPage | undefined }) {
         submit();
       }}
     >
-      <Link to="/status-pages" className="mb-4 inline-flex items-center gap-1 text-[0.8125rem] text-muted-foreground hover:text-foreground">
+      <Link to="/status-pages" className="mb-4 inline-flex items-center gap-1 text-small text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" aria-hidden />
         Status pages
       </Link>
@@ -279,7 +279,7 @@ function Editor({ page }: { page: StatusPage | undefined }) {
                 </Button>
               </div>
             ))}
-            {errors.components ? <p className="text-[0.8125rem] text-down">{errors.components}</p> : null}
+            {errors.components ? <p className="text-small text-down">{errors.components}</p> : null}
             {available.length ? (
               <div className="max-w-sm">
                 <Select
@@ -368,7 +368,7 @@ function Editor({ page }: { page: StatusPage | undefined }) {
         {page ? <BadgeSection page={page} /> : null}
 
         {errors.form ? (
-          <p role="alert" className="text-[0.8125rem] text-down">
+          <p role="alert" className="text-small text-down">
             {errors.form}
           </p>
         ) : null}
@@ -452,10 +452,10 @@ function BadgeSection({ page }: { page: StatusPage }) {
         {snippets.map((s) => (
           <div key={s.name} className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[0.8125rem] font-medium">{s.name}</span>
+              <span className="text-small font-medium">{s.name}</span>
               <CopyButton text={s.text} variant="ghost" label={`Copy ${s.name}`} />
             </div>
-            <code className="block rounded-control bg-subtle px-3 py-2.5 font-mono text-[0.8125rem] break-all">{s.text}</code>
+            <code className="block rounded-control bg-subtle px-3 py-2.5 font-mono text-small break-all">{s.text}</code>
           </div>
         ))}
       </div>

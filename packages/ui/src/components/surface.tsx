@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "../cn";
 import type { HTMLAttributes, ReactNode } from "react";
 
 /** A bordered section of a page, with an optional header row. */
@@ -16,7 +16,7 @@ export function Section({
         <header className={cn("flex flex-wrap items-center justify-between gap-3 px-5 py-4", children ? "border-b border-border" : "")}>
           <div className="flex min-w-0 flex-col gap-0.5">
             {title ? <h2 className="text-sm font-semibold">{title}</h2> : null}
-            {description ? <p className="text-[0.8125rem] text-muted-foreground">{description}</p> : null}
+            {description ? <p className="text-small text-muted-foreground">{description}</p> : null}
           </div>
           {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
         </header>

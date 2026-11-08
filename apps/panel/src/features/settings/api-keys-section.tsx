@@ -54,7 +54,7 @@ export function ApiKeysSection() {
       >
         {created ? (
           <div className="flex flex-col gap-4">
-            <code className="rounded-control bg-subtle px-3 py-2.5 font-mono text-[0.8125rem] break-all">{created.key}</code>
+            <code className="rounded-control bg-subtle px-3 py-2.5 font-mono text-small break-all">{created.key}</code>
             <div className="flex justify-end gap-2">
               <CopyButton text={created.key} label="Copy key" />
               <Button variant="primary" size="sm" onClick={() => close(false)}>
@@ -96,7 +96,7 @@ export function ApiKeysSection() {
             <li key={k.id} className="flex items-center gap-3 px-5 py-3.5">
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">{k.name}</span>
-                <span className="text-[0.8125rem] text-muted-foreground tabular-nums">
+                <span className="text-small text-muted-foreground tabular-nums">
                   tu_…{k.hint.replace("…", "")} · {k.lastUsedAt ? `used ${timeAgo(k.lastUsedAt)}` : "never used"}
                 </span>
               </div>

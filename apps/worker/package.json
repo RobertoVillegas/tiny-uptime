@@ -13,6 +13,7 @@
     "@passwordless-id/webauthn": "2.4.1",
     "@tiny-uptime/contracts": "workspace:*",
     "@tiny-uptime/core": "workspace:*",
+    "@tiny-uptime/ui": "workspace:*",
     "better-result": "3.0.1",
     "valibot": "1.5.0"
   },

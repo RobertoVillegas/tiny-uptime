@@ -62,7 +62,7 @@ export function IncidentUpdatesDialog({ incident, canWrite }: { incident: Incide
           <ol className="flex flex-col gap-3">
             {updates.data!.map((u) => (
               <li key={u.id} className="flex flex-col gap-0.5 border-l-2 border-border pl-3">
-                <span className="text-[0.8125rem] text-muted-foreground">
+                <span className="text-small text-muted-foreground">
                   <b className="font-medium text-foreground">{STATUS_LABEL[u.status]}</b> · {dateTime(u.createdAt)}
                   {u.visibility === "internal" ? " · internal" : ""}
                 </span>

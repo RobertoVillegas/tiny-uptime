@@ -1,5 +1,5 @@
 import { OTPField } from "@base-ui/react/otp-field";
-import { cn } from "cn";
+import { cn } from "../cn";
 
 /** A six-digit code from an authenticator app. Pasting a whole code fills every box. */
 export function CodeInput({

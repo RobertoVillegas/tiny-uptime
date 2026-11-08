@@ -157,7 +157,7 @@ export function MaintenanceForm({ window, onDone }: { window?: Maintenance; onDo
         />
       </FieldGroup>
       {errors.form ? (
-        <p role="alert" className="text-[0.8125rem] text-down">
+        <p role="alert" className="text-small text-down">
           {errors.form}
         </p>
       ) : null}

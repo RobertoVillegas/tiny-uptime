@@ -10,7 +10,7 @@ import { StatusBadge, StatusDot } from "@tiny-uptime/ui/components/status";
 import { EmptyState, Section, Skeleton } from "@tiny-uptime/ui/components/surface";
 import { notify } from "@tiny-uptime/ui/components/toast";
 import { Activity, Bell, Download, Ellipsis, Pause, Play, Plus, Trash2, Upload } from "lucide-react";
-import { cn } from "cn";
+import { cn } from "@tiny-uptime/ui/cn";
 import { useState } from "react";
 import { api, messageOf } from "../../lib/api";
 import { ms, timeAgo } from "../../lib/format";
@@ -96,7 +96,7 @@ export function MonitorsPage() {
               type="button"
               aria-pressed={tag === t}
               onClick={() => setTag(t)}
-              className="h-7 rounded-full border border-border px-3 text-[0.8125rem] text-muted-foreground transition-colors duration-150 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground max-sm:h-9"
+              className="h-7 rounded-full border border-border px-3 text-small text-muted-foreground transition-colors duration-150 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground max-sm:h-9"
             >
               {t ?? "All"}
             </button>
@@ -178,7 +178,7 @@ function MonitorRow({
         <StatusDot status={m.status} className="sm:hidden" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate font-medium">{m.name}</span>
-          <span className="truncate text-[0.8125rem] text-muted-foreground">
+          <span className="truncate text-small text-muted-foreground">
             {typeLabel(m.type)}
             {targetOf(m) ? ` · ${targetOf(m)}` : ""}
             {m.tags.length ? ` · ${m.tags.join(", ")}` : ""}
@@ -190,12 +190,10 @@ function MonitorRow({
           <span className="hidden md:block" />
         )}
         <StatusBadge status={m.status} className="hidden sm:inline-flex" />
-        <span className="hidden text-right text-[0.8125rem] text-muted-foreground tabular-nums sm:block">
+        <span className="hidden text-right text-small text-muted-foreground tabular-nums sm:block">
           {m.type === "heartbeat" ? "" : ms(m.lastLatencyMs)}
         </span>
-        <span className="text-right text-[0.8125rem] text-muted-foreground tabular-nums">
-          {m.paused ? "Paused" : timeAgo(m.lastCheckedAt)}
-        </span>
+        <span className="text-right text-small text-muted-foreground tabular-nums">{m.paused ? "Paused" : timeAgo(m.lastCheckedAt)}</span>
       </Link>
     </li>
   );
@@ -273,7 +271,7 @@ function ListBar({
       />
       {selected.length ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[0.8125rem] tabular-nums">{selected.length} selected</span>
+          <span className="mr-1 text-small tabular-nums">{selected.length} selected</span>
           <Button
             size="sm"
             variant="secondary"
@@ -302,7 +300,7 @@ function ListBar({
           </Button>
         </div>
       ) : (
-        <span className="text-[0.8125rem] text-muted-foreground">
+        <span className="text-small text-muted-foreground">
           {list.length} {list.length === 1 ? "monitor" : "monitors"}
         </span>
       )}
@@ -361,7 +359,7 @@ function ChannelsDialog({
         {channels.data?.length ? (
           <CheckboxList value={chosen} onValueChange={setChosen} options={channels.data.map((c) => ({ value: c.id, label: c.name }))} />
         ) : (
-          <p className="text-[0.8125rem] text-muted-foreground">No alert channels yet. Add one under Alerts.</p>
+          <p className="text-small text-muted-foreground">No alert channels yet. Add one under Alerts.</p>
         )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => onOpenChange(false)}>

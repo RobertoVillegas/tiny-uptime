@@ -1,5 +1,5 @@
 import { Field as FieldPrimitive } from "@base-ui/react/field";
-import { cn } from "cn";
+import { cn } from "../cn";
 import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -16,13 +16,13 @@ type FieldProps = {
 export function Field({ label, description, error, children, className }: FieldProps) {
   return (
     <FieldPrimitive.Root invalid={Boolean(error)} className={cn("flex flex-col gap-1.5", className)}>
-      <FieldPrimitive.Label className="text-[0.8125rem] font-medium text-foreground">{label}</FieldPrimitive.Label>
+      <FieldPrimitive.Label className="text-small font-medium text-foreground">{label}</FieldPrimitive.Label>
       {children}
       {description && !error ? (
-        <FieldPrimitive.Description className="text-[0.8125rem] text-muted-foreground">{description}</FieldPrimitive.Description>
+        <FieldPrimitive.Description className="text-small text-muted-foreground">{description}</FieldPrimitive.Description>
       ) : null}
       {error ? (
-        <p role="alert" className="flex items-start gap-1.5 text-[0.8125rem] text-down">
+        <p role="alert" className="flex items-start gap-1.5 text-small text-down">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           {error}
         </p>

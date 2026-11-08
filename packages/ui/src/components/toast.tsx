@@ -1,5 +1,5 @@
 import { Toast } from "@base-ui/react/toast";
-import { cn } from "cn";
+import { cn } from "../cn";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -21,7 +21,7 @@ export function Toaster({ children }: { children: ReactNode }) {
     <Toast.Provider toastManager={toasts}>
       {children}
       <Toast.Portal>
-        <Toast.Viewport className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] w-[calc(100vw-2rem)] sm:w-90">
+        <Toast.Viewport className="fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-60 w-[calc(100vw-2rem)] sm:w-90">
           <ToastList />
         </Toast.Viewport>
       </Toast.Portal>
@@ -38,8 +38,8 @@ function ToastList() {
       className={cn(
         "absolute right-0 bottom-0 w-full rounded-card bg-surface-raised shadow-raised select-none",
         "[transform:translateY(calc(var(--toast-index)*-0.6rem))_scale(calc(1-var(--toast-index)*0.04))]",
-        "transition-[opacity,transform] duration-200 ease-out data-[starting-style]:translate-y-2 data-[starting-style]:opacity-0",
-        "data-[ending-style]:opacity-0 data-[ending-style]:ease-in data-[limited]:opacity-0",
+        "transition-[opacity,transform] duration-200 ease-out data-starting-style:translate-y-2 data-starting-style:opacity-0",
+        "data-ending-style:opacity-0 data-ending-style:ease-in data-limited:opacity-0",
       )}
     >
       <Toast.Content className="flex items-start gap-3 p-3.5">

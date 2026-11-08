@@ -66,14 +66,14 @@ export function RecoverPage() {
           )}
         </form.Field>
         {recover.isError ? (
-          <p role="alert" className="text-[0.8125rem] text-down">
+          <p role="alert" className="text-small text-down">
             {messageOf(recover.error)}
           </p>
         ) : null}
         <Button type="submit" variant="primary" className="w-full" loading={recover.isPending}>
           Sign in with recovery code
         </Button>
-        <Link to="/login" className="text-center text-[0.8125rem] text-muted-foreground hover:text-foreground">
+        <Link to="/login" className="text-center text-small text-muted-foreground hover:text-foreground">
           Back to sign in
         </Link>
       </form>

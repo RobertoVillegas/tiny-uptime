@@ -114,7 +114,7 @@ function PasskeysSection() {
             <KeyRound className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate font-medium">{p.name}</span>
-              <span className="text-[0.8125rem] text-muted-foreground">
+              <span className="text-small text-muted-foreground">
                 {p.lastUsedAt ? `Last used ${timeAgo(p.lastUsedAt)}` : `Added ${timeAgo(p.createdAt)}`}
               </span>
             </div>
@@ -204,12 +204,12 @@ function TotpSection({ enabled }: { enabled: boolean }) {
             <div className="flex flex-wrap items-center gap-5">
               <QrCode value={setup.uri} label="QR code for your authenticator app" />
               <div className="flex min-w-0 flex-col gap-1">
-                <span className="text-[0.8125rem] text-muted-foreground">Or enter this key</span>
-                <code className="font-mono text-[0.8125rem] break-all">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
+                <span className="text-small text-muted-foreground">Or enter this key</span>
+                <code className="font-mono text-small break-all">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
               </div>
             </div>
             <CodeInput value={code} onValueChange={setCode} invalid={confirm.isError} />
-            {confirm.isError ? <p className="text-[0.8125rem] text-down">{messageOf(confirm.error)}</p> : null}
+            {confirm.isError ? <p className="text-small text-down">{messageOf(confirm.error)}</p> : null}
             <Button type="submit" variant="primary" loading={confirm.isPending} disabled={code.length !== 6}>
               Turn on
             </Button>
@@ -230,7 +230,7 @@ function TotpSection({ enabled }: { enabled: boolean }) {
           }}
         >
           <CodeInput value={code} onValueChange={setCode} invalid={disable.isError} autoFocus />
-          {disable.isError ? <p className="text-[0.8125rem] text-down">{messageOf(disable.error)}</p> : null}
+          {disable.isError ? <p className="text-small text-down">{messageOf(disable.error)}</p> : null}
           <Button type="submit" variant="danger" loading={disable.isPending} disabled={code.length !== 6}>
             Turn off
           </Button>
@@ -325,7 +325,7 @@ function ConnectedAppsSection() {
               <Plug className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="truncate font-medium">{a.clientName}</span>
-                <span className="text-[0.8125rem] text-muted-foreground">
+                <span className="text-small text-muted-foreground">
                   {a.workspaceName} · {a.scopes.includes("mcp:write") ? "Read and change" : "Read only"} ·{" "}
                   {a.lastUsedAt ? `Used ${timeAgo(a.lastUsedAt)}` : `Connected ${timeAgo(a.createdAt)}`}
                 </span>

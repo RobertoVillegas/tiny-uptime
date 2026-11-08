@@ -4,9 +4,13 @@
   "type": "module",
   "exports": {
     "./globals.css": "./src/styles/globals.css",
+    "./tokens": "./src/tokens.ts",
+    "./cn": "./src/cn.ts",
     "./components/*": "./src/components/*.tsx"
   },
   "scripts": {
+    "tokens": "node scripts/tokens.ts",
+    "test": "node scripts/tokens.ts --check",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
