@@ -3,7 +3,7 @@
 export const browserTimezone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const timezones = (): string[] => {
-  const list = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+  const list = Intl.supportedValuesOf("timeZone");
   return list.includes("UTC") ? list : ["UTC", ...list];
 };
 

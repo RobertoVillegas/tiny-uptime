@@ -1,6 +1,7 @@
 import { runInDurableObject } from "cloudflare:test";
 import { env as runtimeEnv, exports } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PublicComponent, PublicStatusPage } from "@tiny-uptime/contracts";
 import type { Env } from "../src/runtime/env";
 import type { Workspace } from "../src/runtime/workspace-object";
 
@@ -16,6 +17,18 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.restoreAllMocks());
+
+/** The public JSON of a page, as a visitor's query string picks it. */
+async function publicPage(slug: string, query = ""): Promise<PublicStatusPage> {
+  return (await exports.default.fetch(`${BASE}/api/public/${slug}${query}`)).json<PublicStatusPage>();
+}
+
+/** The first component of a page, failing the test when there is none. */
+function component(page: PublicStatusPage): PublicComponent {
+  const first = page.groups[0]?.components[0];
+  if (!first) throw new Error("the page lists no components");
+  return first;
+}
 
 async function call(method: string, path: string, key: string, body?: unknown) {
   const res = await exports.default.fetch(
@@ -90,12 +103,12 @@ describe("status pages", () => {
     await call("POST", `/api/v1/incidents/${incident.id}/updates`, ws.apiKey, { status: "investigating", body: "Looking into API errors" });
     await call("POST", `/api/v1/incidents/${incident.id}/updates`, ws.apiKey, { body: "Pager rotation: ask Ana", visibility: "internal" });
 
-    const page = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    const page = await publicPage(pageSlug);
     expect(page.overall).toBe("partial_outage");
     expect(page.groups.map((g: { name: string }) => g.name)).toEqual(["Public", "Developers"]);
-    expect(page.groups[0].components[0].days).toHaveLength(90);
+    expect(component(page).days).toHaveLength(90);
     expect(page.activeIncidents).toHaveLength(1);
-    expect(page.activeIncidents[0].updates.map((u: { body: string }) => u.body)).toEqual(["Looking into API errors"]);
+    expect(page.activeIncidents[0]?.updates.map((u) => u.body)).toEqual(["Looking into API errors"]);
 
     const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
     expect(html).toContain("Acme status");
@@ -169,23 +182,23 @@ describe("status pages", () => {
     expect(created.body.historyDays).toBe(30);
     await tick(ws.id);
 
-    const opens = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    const opens = await publicPage(pageSlug);
     expect(opens.historyDays).toBe(30);
     expect(opens.barSize).toBe("day");
-    expect(opens.groups[0].components[0].days).toHaveLength(30);
-    expect(opens.groups[0].components[0].days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
+    expect(component(opens).days).toHaveLength(30);
+    expect(component(opens).days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
 
-    const week = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    const week = await publicPage(pageSlug, `?days=7`);
     expect(week.barSize).toBe("hour");
-    expect(week.groups[0].components[0].days).toHaveLength(7 * 24);
-    expect(week.groups[0].components[0].days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
+    expect(component(week).days).toHaveLength(7 * 24);
+    expect(component(week).days.at(-1)).toMatchObject({ checks: 1, uptime: 1, ms: expect.any(Number) });
 
-    const day = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1`)).json()) as any;
+    const day = await publicPage(pageSlug, `?days=1`);
     expect(day.barSize).toBe("hour");
-    expect(day.groups[0].components[0].days).toHaveLength(24);
-    expect(day.groups[0].components[0].days.at(-1).checks).toBe(1);
+    expect(component(day).days).toHaveLength(24);
+    expect(component(day).days.at(-1)?.checks).toBe(1);
 
-    const odd = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1000`)).json()) as any;
+    const odd = await publicPage(pageSlug, `?days=1000`);
     expect(odd.historyDays).toBe(30);
 
     const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=7`)).text();
@@ -245,8 +258,8 @@ describe("status pages", () => {
       state.storage.sql.exec(insert, api.id, midnight - 3_600_000, 0);
       state.storage.sql.exec(insert, api.id, midnight, 1);
     });
-    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
-    const days = json.groups[0].components[0].days;
+    const json = await publicPage(pageSlug);
+    const days = component(json).days;
     expect(days).toHaveLength(45);
     expect(days.at(-1)).toEqual({ day: new Date(midnight - SIX).toISOString().slice(0, 10), checks: 1, uptime: 1, ms: null, slow: false });
     expect(days.at(-2)).toMatchObject({ checks: 1, uptime: 0 });
@@ -264,10 +277,10 @@ describe("status pages", () => {
     expect(madrid).toContain("Cada barra es un día en hora GMT-6.");
 
     // A visitor who picks UTC gets days cut at UTC midnight, so both hours land on one day.
-    const utcJson = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?tz=utc`)).json()) as any;
+    const utcJson = await publicPage(pageSlug, `?tz=utc`);
     expect(utcJson.utc).toBe(true);
     const utcDay = new Date(midnight).toISOString().slice(0, 10);
-    expect(utcJson.groups[0].components[0].days.find((d: any) => d.day === utcDay)).toEqual({
+    expect(component(utcJson).days.find((d) => d.day === utcDay)).toEqual({
       day: utcDay,
       checks: 2,
       uptime: 0.5,
@@ -307,19 +320,19 @@ describe("status pages", () => {
       state.storage.sql.exec(insert, api.id, day + 30 * HOUR, 100, 100, 100);
     });
     const label = new Date(day).toISOString().slice(0, 10);
-    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
-    expect(json.groups[0].components[0].days.find((d: any) => d.day === label)).toEqual({
+    const json = await publicPage(pageSlug, `?day=${label}`);
+    expect(component(json).days.find((d) => d.day === label)).toEqual({
       day: label,
       checks: 2,
       uptime: 1,
       ms: 500,
       slow: true,
     });
-    const hours = json.selected.hours[api.id];
+    const hours = json.selected?.hours?.[api.id] ?? [];
     expect(hours).toHaveLength(24);
     expect(hours[14]).toMatchObject({ ms: 900, slow: true });
     expect(hours[15]).toMatchObject({ ms: 100, slow: false });
-    expect(hours[23].checks).toBe(0);
+    expect(hours[23]?.checks).toBe(0);
 
     const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?day=${label}`)).text();
     expect(html).toContain('aria-label="API, hour by hour"');
@@ -372,21 +385,21 @@ describe("status pages", () => {
       "monitorIds",
     );
 
-    const page = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    const page = await publicPage(pageSlug);
     expect(page.overall).toBe("degraded");
-    expect(page.activeIncidents.map((i: any) => i.title)).toEqual(["Payments are slow"]);
+    expect(page.activeIncidents.map((i) => i.title)).toEqual(["Payments are slow"]);
     expect(page.activeIncidents[0]).toMatchObject({ componentName: "", declared: true });
-    expect(page.activeIncidents[0].updates[0].body).toBe("We are looking into slow card payments.");
+    expect(page.activeIncidents[0]?.updates[0]?.body).toBe("We are looking into slow card payments.");
     const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}`)).text();
     expect(html).toContain("<h3>Payments are slow</h3>");
 
-    const auto = (await call("GET", "/api/v1/incidents", ws.apiKey)).body.find((i: any) => !i.declared);
+    const auto = (await call("GET", "/api/v1/incidents", ws.apiKey)).body.find((i: { declared: boolean }) => !i.declared);
     expect(auto).toBeUndefined();
     expect((await call("POST", `/api/v1/incidents/${declared.body.id}/resolve`, ws.apiKey, { message: "All good." })).status).toBe(200);
     expect((await call("POST", `/api/v1/incidents/${declared.body.id}/resolve`, ws.apiKey, {})).status).toBe(400);
-    const after = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}`)).json()) as any;
+    const after = await publicPage(pageSlug);
     expect(after.overall).toBe("operational");
-    expect(after.pastIncidents[0].updates.map((u: any) => u.body)).toEqual(["All good.", "We are looking into slow card payments."]);
+    expect(after.pastIncidents[0]?.updates.map((u) => u.body)).toEqual(["All good.", "We are looking into slow card payments."]);
   });
 
   it("resets a page's history without deleting it, and brings it back", async () => {
@@ -410,28 +423,28 @@ describe("status pages", () => {
       state.storage.sql.exec("UPDATE rollup SET hour = ?", Math.floor(twoDaysAgo / 3_600_000) * 3_600_000);
       state.storage.sql.exec("UPDATE rollup_daily SET day = ?", Math.floor(twoDaysAgo / 86_400_000) * 86_400_000);
     });
-    const before = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    const before = await publicPage(pageSlug, `?days=7`);
     expect(before.pastIncidents).toHaveLength(1);
-    expect(before.groups[0].components[0].uptime).toBe(0.5);
+    expect(component(before).uptime).toBe(0.5);
 
     const reset = await call("POST", `/api/v1/status-pages/${id}/history-reset`, ws.apiKey);
     expect(reset.status).toBe(200);
     expect(reset.body.historyResetAt).not.toBeNull();
-    const after = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    const after = await publicPage(pageSlug, `?days=7`);
     expect(after.pastIncidents).toHaveLength(0);
-    expect(after.groups[0].components[0].uptime).toBeNull();
-    expect(after.groups[0].components[0].days.every((d: { checks: number }) => d.checks === 0)).toBe(true);
+    expect(component(after).uptime).toBeNull();
+    expect(component(after).days.every((d: { checks: number }) => d.checks === 0)).toBe(true);
 
     await tick(ws.id);
-    const fresh = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
-    expect(fresh.groups[0].components[0].uptime).toBe(1);
-    expect(fresh.groups[0].components[0].days.at(-1).checks).toBe(1);
+    const fresh = await publicPage(pageSlug, `?days=7`);
+    expect(component(fresh).uptime).toBe(1);
+    expect(component(fresh).days.at(-1)?.checks).toBe(1);
 
     const undone = await call("DELETE", `/api/v1/status-pages/${id}/history-reset`, ws.apiKey);
     expect(undone.body.historyResetAt).toBeNull();
-    const back = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=7`)).json()) as any;
+    const back = await publicPage(pageSlug, `?days=7`);
     expect(back.pastIncidents).toHaveLength(1);
-    expect(back.groups[0].components[0].uptime).toBeCloseTo(2 / 3);
+    expect(component(back).uptime).toBeCloseTo(2 / 3);
   });
 
   it("opens a day's bar with the incidents that overlapped it, cut at the page's midnight", async () => {
@@ -474,14 +487,14 @@ describe("status pages", () => {
     expect(plain).not.toContain('id="selected"');
     expect(plain).not.toContain('aria-current="date"');
 
-    const json = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
-    expect(json.selected.bar).toBe(label);
-    expect(json.selected.from).toBe(new Date(start).toISOString());
-    expect(json.selected.to).toBe(new Date(start + DAY).toISOString());
-    expect(json.selected.incidents.map((i: { componentName: string }) => i.componentName)).toEqual(["API"]);
-    const earlier = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${before}`)).json()) as any;
-    expect(earlier.selected.incidents.map((i: { componentName: string }) => i.componentName)).toEqual(["Website"]);
-    const outside = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=1999-01-01`)).json()) as any;
+    const json = await publicPage(pageSlug, `?day=${label}`);
+    expect(json.selected?.bar).toBe(label);
+    expect(json.selected?.from).toBe(new Date(start).toISOString());
+    expect(json.selected?.to).toBe(new Date(start + DAY).toISOString());
+    expect(json.selected?.incidents.map((i) => i.componentName)).toEqual(["API"]);
+    const earlier = await publicPage(pageSlug, `?day=${before}`);
+    expect(earlier.selected?.incidents.map((i) => i.componentName)).toEqual(["Website"]);
+    const outside = await publicPage(pageSlug, `?day=1999-01-01`);
     expect(outside.selected).toBeNull();
 
     const html = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=90&day=${label}`)).text();
@@ -496,15 +509,15 @@ describe("status pages", () => {
     const hours = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=1`)).text();
     const hour = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString().slice(0, 13);
     expect(hours).toContain(`href="/s/${pageSlug}?days=1&#38;hour=${hour}#selected"`);
-    const now = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?days=1&hour=${hour}`)).json()) as any;
+    const now = await publicPage(pageSlug, `?days=1&hour=${hour}`);
     expect(now.selected).toMatchObject({ bar: `${hour}:00:00.000Z`, incidents: [] });
     const hourHtml = await (await exports.default.fetch(`${BASE}/s/${pageSlug}?days=1&hour=${hour}`)).text();
     expect(hourHtml).toContain('aria-current="time"');
     expect(hourHtml).toContain("No incidents in this hour.");
 
     await call("POST", `/api/v1/status-pages/${created.body.id}/history-reset`, ws.apiKey);
-    const reset = (await (await exports.default.fetch(`${BASE}/api/public/${pageSlug}?day=${label}`)).json()) as any;
-    expect(reset.selected.incidents).toEqual([]);
+    const reset = await publicPage(pageSlug, `?day=${label}`);
+    expect(reset.selected?.incidents).toEqual([]);
   });
 
   it("serves a status badge for a page and for a custom domain's root", async () => {

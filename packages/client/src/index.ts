@@ -36,7 +36,8 @@ import { call, type Transport } from "./http";
 export { ApiError, type Transport } from "./http";
 
 type Challenge = { challengeId: string; challenge: string };
-type Json = Record<string, unknown>;
+/** A JSON object the server reads, such as a WebAuthn response. */
+type Json = object;
 
 /** A typed client for the tiny-uptime API, shared by the panel and future apps. */
 export function createClient(t: Transport) {

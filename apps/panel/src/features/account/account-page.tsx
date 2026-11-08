@@ -53,7 +53,7 @@ function PasskeysSection() {
       const registration = await createPasskey(options.challenge, options.user);
       return api.auth.addPasskey({
         challengeId: options.challengeId,
-        registration: registration as unknown as Record<string, unknown>,
+        registration: registration,
         ...(label.trim() ? { label: label.trim() } : {}),
       });
     },

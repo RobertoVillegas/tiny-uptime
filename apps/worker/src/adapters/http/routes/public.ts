@@ -1,12 +1,4 @@
-import {
-  barOfQuery,
-  HISTORY_RANGES,
-  isTimeZone,
-  SLUG,
-  type HistoryRange,
-  type PublicStatusPage,
-  type PublicView,
-} from "@tiny-uptime/contracts";
+import { barOfQuery, HISTORY_RANGES, isOneOf, isTimeZone, SLUG, type PublicStatusPage, type PublicView } from "@tiny-uptime/contracts";
 import { renderStatusBadge } from "../../html/status-badge";
 import { renderStatusFeed } from "../../html/status-feed";
 import { renderStatusPage } from "../../html/status-page";
@@ -102,7 +94,7 @@ function viewerZone(request: Request): string | null {
 function viewOf(url: URL): PublicView {
   const view: PublicView = {};
   const days = Number(url.searchParams.get("days"));
-  if ((HISTORY_RANGES as readonly number[]).includes(days)) view.days = days as HistoryRange;
+  if (isOneOf(HISTORY_RANGES, days)) view.days = days;
   const bar = barOfQuery(url.searchParams);
   if (bar !== undefined) view.bar = bar;
   if (url.searchParams.get("tz") === "utc") view.utc = true;

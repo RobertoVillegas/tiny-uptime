@@ -3,7 +3,7 @@ export function firstError(errors: readonly unknown[]): string | undefined {
   const first = errors[0];
   if (!first) return undefined;
   if (typeof first === "string") return first;
-  if (typeof first === "object" && "message" in first) return capitalize(String((first as { message: unknown }).message));
+  if (typeof first === "object" && "message" in first) return capitalize(String(first.message));
   return undefined;
 }
 

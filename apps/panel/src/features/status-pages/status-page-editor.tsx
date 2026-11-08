@@ -19,7 +19,8 @@ import { NotFound } from "../shell/not-found";
 import { BadgeSection } from "./badge-section";
 import { ComponentsSection } from "./components-section";
 import { DangerZone } from "./danger-zone";
-import { draftOf, inputOf, RANGE_OPTIONS, ZONES, type Draft } from "./status-page-draft";
+import { timezones } from "../../lib/zoned";
+import { draftOf, inputOf, RANGE_OPTIONS, type Draft } from "./status-page-draft";
 
 export function StatusPageEditor() {
   const { pageId } = statusPageRoute.useParams();
@@ -149,7 +150,7 @@ function Editor({ page }: { page: StatusPage | undefined }) {
                 onChange={(e) => set("timeZone", e.target.value)}
               />
               <datalist id="status-page-zones">
-                {ZONES.map((z) => (
+                {timezones().map((z) => (
                   <option key={z} value={z} />
                 ))}
               </datalist>
